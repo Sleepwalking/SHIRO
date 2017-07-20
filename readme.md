@@ -1,7 +1,7 @@
 SHIRO
 ===
 
-Phoneme-to-Speech Alignment Toolkit based on liblrhsmm
+Phoneme-to-Speech Alignment Toolkit based on [liblrhsmm](https://github.com/Sleepwalking/liblrhsmm)
 
 Proudly crafted in C and Lua. Licensed under GPLv3.
 
@@ -48,7 +48,7 @@ Building
 
 It is not yet tested whether SHIRO compiles and runs on Windows (but Windows support is planned).
 
-`ciglet` and `liblrhsmm` are the only library dependencies. You also need lua (version 5.1 or above) or luajit. No 3rd party lua library (besides those included in `external/` already) is needed.
+[`ciglet`](https://github.com/Sleepwalking/ciglet) and [`liblrhsmm`](https://github.com/Sleepwalking/liblrhsmm) are the only library dependencies. You also need lua (version 5.1 or above) or luajit. No 3rd party lua library (besides those included in `external/` already) is needed.
 
 * `cd` into `ciglet`, run `make single-file`. This creates `ciglet.h` and `ciglet.c` under `ciglet/single-file/`. Copy and rename this directory to `shiro/external/ciglet`.
 * Put `liblrhsmm` under `shiro/external/` and run `make` from `shiro/external/liblrhsmm/`.

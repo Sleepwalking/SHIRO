@@ -106,21 +106,23 @@ int main(int argc, char** argv) {
     for(int i = 0; i < s -> nseg; i ++)
       if(s -> time[i] > o -> nt)
         s -> time[i] = o -> nt;
+    lrh_seg_buildjumps(s);
 
     FP_TYPE* outp = NULL;
     int* realign = NULL;
     if(opt_geodur) {
       outp = lrh_sample_outputprob_lg_full(hsmm, o, s);
       realign = lrh_viterbi_geometric(hsmm, s, outp, o -> nt, NULL);
+      for(int i = 0; i < s -> nseg; i ++)
+        s -> time[i] = realign[i];
+      j_states = json_from_seg(s, j_states);
     } else {
       outp = lrh_sample_outputprob_lg(hsmm, o, s);
       realign = lrh_viterbi(hsmm, s, outp, o -> nt, NULL);
+      j_states = json_from_seg_shuffle(s, j_states, realign);
     }
-    for(int i = 0; i < s -> nseg; i ++)
-      s -> time[i] = realign[i];
     free(outp); free(realign);
 
-    j_states = json_from_seg(s, j_states);
     cJSON_ReplaceItemInObject(j_file_list_f, "states", j_states);
 
     lrh_delete_seg(s);

@@ -153,3 +153,30 @@ static cJSON* json_from_seg(lrh_seg* s, cJSON* j_states_in) {
   }
   return j_states;
 }
+
+static cJSON* json_from_seg_shuffle(lrh_seg* s, cJSON* j_states_in, int* shufidx) {
+  int nreseg = 0;
+  while(shufidx[nreseg * 2] != -1) nreseg ++;
+
+  cJSON* j_states = cJSON_CreateArray();
+
+  for(int i = 0; i < nreseg; i ++) {
+    int it = shufidx[i * 2 + 0];
+    int is = shufidx[i * 2 + 1];
+    cJSON* j_states_i = cJSON_CreateObject();
+    cJSON_AddNumberToObject(j_states_i, "time", it);
+    cJSON_AddNumberToObject(j_states_i, "dur", s -> durstate[is]);
+    cJSON* j_out = cJSON_CreateArray();
+    for(int l = 0; l < s -> nstream; l ++)
+      cJSON_AddItemToArray(j_out, cJSON_CreateNumber(s -> outstate[l][is]));
+    cJSON_AddItemToObject(j_states_i, "out", j_out);
+    if(j_states_in != NULL) {
+      cJSON* j_curr_in = cJSON_GetArrayItem(j_states_in, is);
+      cJSON* j_ext = cJSON_GetObjectItem(j_curr_in, "ext");
+      if(j_ext != NULL)
+        cJSON_AddItemToObject(j_states_i, "ext", cJSON_Duplicate(j_ext, 1));
+    }
+    cJSON_AddItemToArray(j_states, j_states_i);
+  }
+  return j_states;
+}

@@ -47,9 +47,6 @@ int main(int argc, char** argv) {
   cJSON* j_segm = NULL;
   lrh_model* hsmm = NULL;
 
-  //lrh_inference_stprune = 15;
-  //lrh_inference_stprune_full_slope = 0.5;
-
   int opt_niter = 1;
   int opt_geodur = 0;
   while((c = getopt(argc, argv, "m:s:n:gh")) != -1) {
@@ -119,6 +116,7 @@ int main(int argc, char** argv) {
       for(int i = 0; i < s -> nseg; i ++)
         if(s -> time[i] > o -> nt)
           s -> time[i] = o -> nt;
+      lrh_seg_buildjumps(s);
 
       if(opt_geodur)
         total_lh += lrh_estimate_geometric(hstat, hsmm, o, s);

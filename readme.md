@@ -12,15 +12,39 @@ SHIRO is a set of tools based on HSMM (Hidden Semi-Markov Model), for aligning p
 
 Gathering hours of speech data aligned with phoneme transcription is, in most approaches to this date, an important prerequisite to training speech recognizers and synthesizers. Typically this task is automated by an operation called forced alignment using hidden Markov models and in particular, the HTK software bundle has become the standard baseline method for both speech recognition and alignment since mid 90s.
 
-SHIRO presents a lightweight alternative to HTK under a more permissive license. It is like a stripped-down version that only does phoneme-to-speech alignment, but equipped with LRHSMM and written from scratch in a few thousand lines of rock-solid C code (plus a bit of Lua).
+SHIRO presents a lightweight alternative to HTK under a more permissive license. It is like a stripped-down version that only does phoneme-to-speech alignment, but equipped with HSMM and written from scratch in a few thousand lines of rock-solid C code (plus a bit of Lua).
 
 ### A little bit of history
 
 SHIRO is a sister project of liblrhsmm whose first version was developed over summer back in 2015. SHIRO was initially part of liblrhsmm and later it was merged into Moresampler. Before turned into a toolkit, SHIRO supported flat-start training only, which was why it got the name SHIRO (meaning "white" in Japanese).
 
-### Prerequisites
+HSMM Primer
+---
 
-To work with SHIRO you don't need to know how to derive Baum-Welch and go through the messy log(sum(exp)), but it's better to have some basic concepts about HMM, e.g. knowing what are the "states" - I'm not talking about California or Illinois. Reading through some lecture slides on HMM should suffice.
+It is good to have some basic concepts with Hidden Semi-Markov Models when working with SHIRO.
+
+One way to understand HSMM is through Mario analogy. We have a super Mario setup with a flat map and a bunch of question blocks on the top,
+
+![](https://user-images.githubusercontent.com/4531595/28723448-61880b96-737c-11e7-8e81-bd8beb84c7fb.png)
+
+Let's say each of the block contains a different hidden item. It could be a coin; it could be a mushroom. The items hidden in the first few blocks have a higher probability to be coins and the final few blocks are more likely to be mushrooms.
+
+Each time Mario walks to the right by some random number of steps and then he jumps and hit one of the blocks, and the block is going to release an item.
+
+![](https://user-images.githubusercontent.com/4531595/28723450-62c0e1ea-737c-11e7-9da0-d47fafe39048.png)
+
+Now the question is, Mario has walked through this map from left to right and we are given a bunch of items the blocks have released (sorted in the original order), can we infer at which places did Mario jump?
+
+And this is the typical kind of HSMM problem we're dealing with. We're essentially aligning a sequence of items with a sequence of possible jump positions.
+
+In the context of phoneme-to-speech alignment, Mario is hopping through a bunch of phonemes with some unknown duration, and when he passes through a phoneme, there's going to be some sound wave (of pronuncing the phoneme) emitted. We know what phonemes we have, and we have the entire sound file. The problem is to locate the position, which includes the beginning and ending of each phoneme.
+
+The HSMM terminology for describing such problem is: each hopping interval is a hidden *state*. During a state, an output is *emitted* according to some probability distribution associated with the state. The duration of a state is also governed by a probability distribution. And there are two things we can do:
+
+1. Inference. Given an output sequence and a state sequence, determine the most probable time that each state begins/ends.
+2. Training. Given an output sequence, a state seqeunce and the associated time sequence, find the probability distributions governing the state duration and emission of outputs.
+
+Speech, as a continuous process, has to be chopped into short pieces to fit into the HSMM paradigm. This is done in the *feature extraction* stage, where the input speech is analyzed and features are extracted every 5 or 10 milliseconds. The features are condensed data describing how the input sounds like at a particular time. Also in practice the mapping from phonemes to states is not one-to-one, because many phonemes have rich time structure more than what a single state can model. We usually assign 3 to 5 states to each phoneme.
 
 Components
 ---

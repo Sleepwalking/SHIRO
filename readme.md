@@ -127,7 +127,7 @@ lua shiro-mkseg.lua index.csv \
   -e .param -n 36 -L sil -R sil > unaligned.json
 ```
 
-Third step: since the search space for HSMM is an order of magnitude larger than HMM, it's more efficient to start from a HMM-based forced alignment, then refine the alignment using HSMM in a pruned search space. When running HSMM training, SHIRO applies such pruning by default.
+Third step: since the search space for HSMM is an order of magnitude larger than HMM, it's more efficient to start from a HMM-based forced alignment, then refine the alignment using HSMM in a pruned search space. When running HSMM training, SHIRO applies such pruning by default. You may need to increase the search space (`-p 10 -d 50`) a bit to avoid alignment errors caused by a narrowed search space, although this will make it run slower.
 ```bash
 ./shiro-align \
   -m trained-model.hsmm \
@@ -135,7 +135,8 @@ Third step: since the search space for HSMM is an order of magnitude larger than
   -g > initial-alignment.json
 ./shiro-align \
   -m trained-model.hsmm \
-  -s initial-alignment.json> refined-alignment.json
+  -s initial-alignment.json \
+  -p 10 -d 50 > refined-alignment.json
 ```
 
 Final step: convert the refined segmentation into label files.
@@ -186,7 +187,7 @@ Final step: train the model using the HSMM training algorithm.
 ./shiro-rest \
   -m markovian.hsmm \
   -s markovian-segmentation.json \
-  -n 5 > trained.hsmm
+  -n 5 -p 10 -d 50 > trained.hsmm
 ```
 
 ### Using SPTK in place of shiro-xxcc
@@ -206,3 +207,60 @@ end
 Any Lua file that takes the `rawfile` and outputs a `.param` file will work.
 
 **Note**: parameters generated from `shiro-xxcc` are not guaranteed to match the result from SPTK even under the same configuration.
+
+Advanced Topics
+---
+
+### Skippable Phoneme
+
+In certain occasions there could be slight mismatches between the speech and its phoneme transcription. One of the most common cases is the insertion of pauses between words or phrases. To correct this mismatch we can add a pause phoneme ("pau" in Arpabet, for example) at every word and phrase boundary, and make such phonemes skippable by specifying a skipping probability between 0 and 1 in the phonemap,
+
+```json
+    ...
+    "pau":{
+      "pskip":0.5,
+      "states":[{
+          "dur":0,
+          "out":[0,0,0]
+        },{
+          "dur":1,
+          "out":[1,1,1]
+        },{
+          "dur":2,
+          "out":[2,2,2]
+        },{
+```
+Then `shiro-mkseg.lua` will add a skip transition across all the states in phoneme "pau" whenever it appears in the segmentation file. The skip transition can be visualized as,
+
+![](https://user-images.githubusercontent.com/4531595/28725904-9e71645a-7384-11e7-89b4-188e0cc38b96.png)
+
+### Alternative intra-phoneme topologies
+
+The states within a phoneme can also be skipped via topology specification in the phonemap, such as,
+```json
+    ...
+    "pau":{
+      "topology":"type-b",
+      "states":[{
+          "dur":0,
+          "out":[0,0,0]
+        },{
+          "dur":1,
+          "out":[1,1,1]
+        },{
+          "dur":2,
+          "out":[2,2,2]
+        },{
+```
+
+The default topology is *type-a*, which means there's no skip at all, and it works well for most of the time.
+
+Other options include
+
+* *type-b*
+  ![type-b](https://user-images.githubusercontent.com/4531595/28726021-11d72560-7385-11e7-9451-547a12f5eae0.png)
+* *type-c*
+  ![type-c](https://user-images.githubusercontent.com/4531595/28726026-139d4280-7385-11e7-9f5a-5da57cf37267.png)
+* *skip-boundary*
+  ![skip-boundary](https://user-images.githubusercontent.com/4531595/28726028-16948ea8-7385-11e7-972d-84350437eaff.png)
+

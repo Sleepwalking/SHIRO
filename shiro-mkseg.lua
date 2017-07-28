@@ -100,22 +100,69 @@ for i = 1, #file_list do
       print("Error: phoneme " .. p .. " is not defined in the phone map.")
       return
     end
-    for k = 1, #pst.states do
+    local nst = #pst.states
+    if pst.pskip ~= nil and pst.pskip > 0 then
+      local dstst = states[#states]
+      if dstst ~= nil then
+        dstst.jmp[#dstst.jmp + 1] = {d = nst + 1}
+        dstst.jmp[#dstst.jmp].p = pst.pskip
+      end
+    end
+    for k = 1, nst do
       states[#states + 1] = {
         time = #states + 1,       -- state boundary
         dur = pst.states[k].dur,  -- duration state
         out = pst.states[k].out,  -- output state for each stream
+        jmp = {},                 -- jumps (besides forward transition)
         ext = {p, k - 1}          -- extra information
       }
     end
+
+    -- M. T. Johnson, "Capacity and Complexity of HMM Duration Modeling Techniques".
+    --   IEEE Sigproc Letters, Vol. 12, No. 5, May 2005.
+    if pst.topology == "type-a" then
+      -- no extra jumps to add
+    elseif pst.topology == "type-b" then
+      for k = 1, nst - 2 do
+        local dstst = states[#states - nst + k]
+        if dstst ~= nil then
+          dstst.jmp[#dstst.jmp + 1] = {d = nst - k}
+        end
+      end
+    elseif pst.topology == "type-c" then
+      for k = 1, nst - 2 do
+        local dstst = states[#states - nst + k]
+        if dstst ~= nil then
+          dstst.jmp[#dstst.jmp + 1] = {d = 2}
+        end
+      end
+    elseif pst.topology == "skip-boundary" then
+      local dstst = states[#states - nst]
+      if dstst ~= nil then dstst.jmp[#dstst.jmp + 1] = {d = 2} end
+      dstst = states[#states - 1]
+      if dstst ~= nil then dstst.jmp[#dstst.jmp + 1] = {d = 2} end
+    end
+
   end
   local flatdur = nfrm / #states
-  for k = 1, #states do
-    states[k].time = math.round(states[k].time * flatdur)
+  for k, dstst in ipairs(states) do
+    dstst.time = math.round(dstst.time * flatdur)
+    if dstst.jmp ~= nil then
+      local jmpp = 0
+      for l, srcjmp in ipairs(dstst.jmp) do
+        if srcjmp.p ~= nil then jmpp = jmpp + srcjmp.p end
+      end
+      local avgp = 0.5 * (1 - jmpp) / #dstst.jmp
+      for l, dstjmp in ipairs(dstst.jmp) do
+        if dstjmp.p == nil then
+          dstjmp.p = avgp
+        end
+      end
+    end
   end
   seg.file_list[i] = {filename = feature_path, states = states}
   io.close(fh)
 end
 
 print(json.encode(seg, {indent = true,
-  keyorder = {"filename", "states", "time", "dur", "out", "ext"}}))
+  keyorder = {"filename", "states", "time", "dur", "out", "jmp", "ext"}}))

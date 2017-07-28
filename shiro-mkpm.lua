@@ -19,25 +19,25 @@
   along with SHIRO.  If not, see <http://www.gnu.org/licenses/>.
 ]]
 
---[[
-  shiro-mkpm.lua path-to-phoneset -s state-per-phoneme -S num-stream
-]]
-
 local mypath = arg[0]:match("(.-)[^\\/]+$")
 
 json = require(mypath .. "external/dkjson")
 getopt = require(mypath .. "external/getopt")
 
-opts = getopt(arg, "sS")
+opts = getopt(arg, "sSt")
 
 if opts.h then
   print("Usage:")
-  print("shiro-mkpm.lua path-to-phoneset -s state-per-phoneme -S num-stream")
+  print("shiro-mkpm.lua path-to-phoneset\n" ..
+        "  -s state-per-phoneme -S num-stream -t default-topology\n" ..
+        "  -w (weak skips by default)")
   return
 end
 
 local state_per_phoneme = tonumber(opts.s or "3")
 local num_stream = tonumber(opts.S or "3")
+local default_topology = opts.t
+local default_weak_skips = opts.w
 if #opts._ < 1 then
   print("Error: shiro-mkpm requires an input phoneme set.")
   return
@@ -73,5 +73,11 @@ for i = 1, #phonemes do
     stcount = stcount + 1
   end
   output.phone_map[phonemes[i]] = {states = states}
+  if default_topology ~= nil then
+    output.phone_map[phonemes[i]].topology = default_topology
+  end
+  if default_weak_skips ~= nil then
+    output.phone_map[phonemes[i]].pskip = 0.02
+  end
 end
 print(json.encode(output, {indent = true, keyorder = phonemes}))

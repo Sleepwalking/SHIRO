@@ -67,14 +67,12 @@ for i, iseg in ipairs(seg.file_list) do
   local curr_idx = 100
   local curr_st = nil
   for j, st in ipairs(iseg.states) do
-    if st.ext[2] <= curr_idx then
-      if curr_st ~= nil then
-        labstr = labstr .. t0 .. "\t" .. t1 .. "\t" .. curr_st.ext[1] .. "\r\n"
-        t0 = t1
-      end
-      curr_st = st
-      curr_idx = st.ext[2]
+    if curr_st ~= nil and (st.ext[2] <= curr_idx or st.ext[1] ~= curr_st.ext[1]) then
+      labstr = labstr .. t0 .. "\t" .. t1 .. "\t" .. curr_st.ext[1] .. "\r\n"
+      t0 = t1
     end
+    curr_st = st
+    curr_idx = st.ext[2]
     t1 = st.time * hop_time
     if state_align then
       labstr = labstr .. t0s .. "\t" .. t1 .. "\t" .. st.ext[2] .. "\r\n"

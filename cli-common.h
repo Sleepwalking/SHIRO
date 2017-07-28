@@ -127,6 +127,26 @@ static lrh_seg* load_seg_from_json(cJSON* j_states, int nstream) {
     if(j_time != NULL) {
       s -> time[i] = j_time -> valueint;
     }
+    cJSON* j_jmp = cJSON_GetObjectItem(j_states_i, "jmp");
+    if(j_jmp != NULL) {
+      int njmp = cJSON_GetArraySize(j_jmp);
+      FP_TYPE pnext = 1.0;
+      s -> djump_out[i] = realloc(s -> djump_out[i], (njmp + 1) * sizeof(int));
+      s -> pjump_out[i] = realloc(s -> pjump_out[i], (njmp + 1) * sizeof(FP_TYPE));
+      for(int k = 0; k < njmp; k ++) {
+        cJSON* j_jmp_k = cJSON_GetArrayItem(j_jmp, k);
+        cJSON* j_jmp_d = cJSON_GetObjectItem(j_jmp_k, "d");
+        cJSON* j_jmp_p = cJSON_GetObjectItem(j_jmp_k, "p");
+        checkvar(jmp_d); checkvar(jmp_p);
+        if(j_jmp_d ->valueint != 1) {
+          s -> djump_out[i][k] = j_jmp_d -> valueint;
+          s -> pjump_out[i][k] = j_jmp_p -> valuedouble;
+          pnext -= j_jmp_p -> valuedouble;
+        }
+      }
+      s -> djump_out[i][njmp] = 1;
+      s -> pjump_out[i][njmp] = pnext;
+    }
   }
   return s;
 }
@@ -147,6 +167,9 @@ static cJSON* json_from_seg(lrh_seg* s, cJSON* j_states_in) {
       cJSON* j_ext = cJSON_GetObjectItem(j_curr_in, "ext");
       if(j_ext != NULL)
         cJSON_AddItemToObject(j_states_i, "ext", cJSON_Duplicate(j_ext, 1));
+      cJSON* j_jmp = cJSON_GetObjectItem(j_curr_in, "jmp");
+      if(j_jmp != NULL)
+        cJSON_AddItemToObject(j_states_i, "jmp", cJSON_Duplicate(j_jmp, 1));
       j_curr_in = j_curr_in -> next;
     }
     cJSON_AddItemToArray(j_states, j_states_i);

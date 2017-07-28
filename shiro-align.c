@@ -36,6 +36,9 @@ static void print_usage() {
     "  -m model-file\n"
     "  -s segmentation-file\n"
     "  -g (use geometric duration distribution)\n"
+    "  -p state-level-pruning (HSMM)\n"
+    "  -P state-level-pruning (HMM)\n"
+    "  -d extra-duration-search-space\n"
     "  -h (print usage)\n");
   exit(1);
 }
@@ -47,7 +50,7 @@ int main(int argc, char** argv) {
   lrh_model* hsmm = NULL;
 
   int opt_geodur = 0;
-  while((c = getopt(argc, argv, "m:s:gh")) != -1) {
+  while((c = getopt(argc, argv, "m:s:gp:P:d:h")) != -1) {
     char* jsonstr = NULL;
     switch(c) {
     case 'm':
@@ -72,6 +75,15 @@ int main(int argc, char** argv) {
     break;
     case 'g':
       opt_geodur = 1;
+    break;
+    case 'p':
+      lrh_inference_stprune = atoi(optarg);
+    break;
+    case 'P':
+      lrh_inference_stprune_full_slope = atoi(optarg);
+    break;
+    case 'd':
+      lrh_inference_duration_extra = atoi(optarg);
     break;
     case 'h':
       print_usage();

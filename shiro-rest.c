@@ -40,6 +40,7 @@ static void print_usage() {
     "  -p state-level-pruning (HSMM)\n"
     "  -P state-level-pruning (HMM)\n"
     "  -d extra-duration-search-space\n"
+    "  -D (DAEM training)\n"
     "  -h (print usage)\n");
   exit(1);
 }
@@ -52,7 +53,8 @@ int main(int argc, char** argv) {
 
   int opt_niter = 1;
   int opt_geodur = 0;
-  while((c = getopt(argc, argv, "m:s:n:gp:P:d:h")) != -1) {
+  int opt_daem = 0;
+  while((c = getopt(argc, argv, "m:s:n:gp:P:d:Dh")) != -1) {
     char* jsonstr = NULL;
     switch(c) {
     case 'm':
@@ -90,6 +92,9 @@ int main(int argc, char** argv) {
     case 'd':
       lrh_inference_duration_extra = atoi(optarg);
     break;
+    case 'D':
+      opt_daem = 1;
+    break;
     case 'h':
       print_usage();
     break;
@@ -111,7 +116,14 @@ int main(int argc, char** argv) {
   int nfile = cJSON_GetArraySize(j_file_list);
 
   for(int iter = 0; iter < opt_niter; iter ++) {
-    fprintf(stderr, "Running iteration %d/%d...\n", iter, opt_niter);
+    if(opt_daem) {
+      lrh_daem_temperature = sqrt((FP_TYPE)(iter + 1) / opt_niter);
+      fprintf(stderr, "Running iteration %d/%d, temperature = %.2f...\n",
+        iter, opt_niter, lrh_daem_temperature);
+    } else {
+      fprintf(stderr, "Running iteration %d/%d...\n", iter, opt_niter);
+    }
+
     FP_TYPE total_lh = 0;
 
     lrh_model_stat* hstat = lrh_model_stat_from_model(hsmm);
@@ -145,7 +157,8 @@ int main(int argc, char** argv) {
       lrh_model_update(hsmm, hstat, 0);
     lrh_delete_model_stat(hstat);
 
-    fprintf(stderr, "Average log likelihood = %f.\n", total_lh / nfile);
+    fprintf(stderr, "Average log likelihood = %f.\n",
+      total_lh / nfile / lrh_daem_temperature);
   }
 
   cmp_ctx_t cmpobj;

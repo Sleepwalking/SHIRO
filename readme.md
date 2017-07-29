@@ -211,7 +211,7 @@ Any Lua file that takes the `rawfile` and outputs a `.param` file will work.
 Advanced Topics
 ---
 
-### Skippable Phoneme
+### Skippable phonemes
 
 In certain occasions there could be slight mismatches between the speech and its phoneme transcription. One of the most common cases is the insertion of pauses between words or phrases. To correct this mismatch we can add a pause phoneme ("pau" in Arpabet, for example) at every word and phrase boundary, and make such phonemes skippable by specifying a skipping probability between 0 and 1 in the phonemap,
 
@@ -264,3 +264,9 @@ Other options include
 * *skip-boundary*
   ![skip-boundary](https://user-images.githubusercontent.com/4531595/28726028-16948ea8-7385-11e7-972d-84350437eaff.png)
 
+
+### DAEM training
+
+DAEM (<s>DorAEMon</s> Deterministic Annealing Expectation-Maximization) is a modified version of the standard HSMM training algorithm. In DAEM training the log probabilities are scaled by a temperature coefficient that gradually converges from 0 to 1 throughout the iterations. It has been reported in the literatures that DAEM improves the accuracy of flat-start-trained HMM speech recognition systems.
+
+To enable DAEM for `shiro-rest`, simply add `-D` option. The displayed log likelihood will be adjusted against temperature.

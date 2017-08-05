@@ -28,6 +28,11 @@
 #include "external/liblrhsmm/estimate.h"
 #include "external/liblrhsmm/serial.h"
 
+#ifdef _WIN32
+#include <fcntl.h>
+#include <io.h>
+#endif
+
 #include "cli-common.h"
 
 static void print_usage() {
@@ -47,6 +52,9 @@ static void print_usage() {
 
 extern char* optarg;
 int main(int argc, char** argv) {
+# ifdef _WIN32
+  _setmode(_fileno(stdout), _O_BINARY);
+# endif
   int c;
   cJSON* j_segm = NULL;
   lrh_model* hsmm = NULL;

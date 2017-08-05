@@ -25,6 +25,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef _WIN32
+#include <fcntl.h>
+#include <io.h>
+#endif
+
 #include "external/ciglet/ciglet.h"
 
 char* mystrdup(const char *str) {
@@ -76,6 +81,9 @@ static void print_usage() {
 
 extern char* optarg;
 int main(int argc, char** argv) {
+# ifdef _WIN32
+  _setmode(_fileno(stdout), _O_BINARY);
+# endif
   int c;
 
   char* input_wav = NULL;

@@ -25,6 +25,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef _WIN32
+#include <fcntl.h>
+#include <io.h>
+#endif
+
 #include "external/ciglet/ciglet.h"
 
 char* mystrdup(const char *str) {
@@ -108,7 +113,7 @@ static void main_xxcc() {
   int nstatic = opt_order + opt_e;
   int nparam = nstatic * (1 + opt_d + opt_a);
   
-    int nx = 0;
+  int nx = 0;
   FP_TYPE* x = read_float_data(input_raw, & nx);
 
   int nfft = pow(2, ceil(log2(opt_framesize)));
@@ -187,6 +192,9 @@ static void main_xxcc() {
 
 extern char* optarg;
 int main(int argc, char** argv) {
+# ifdef _WIN32
+  _setmode(_fileno(stdout), _O_BINARY);
+# endif
   int c;
   opt_featuretype = mystrdup("mfcc");
 

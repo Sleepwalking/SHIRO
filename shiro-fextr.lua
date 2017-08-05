@@ -29,6 +29,10 @@ getopt = require(mypath .. "external/getopt")
 shiro_cli = require(mypath .. "cli-common")
 require(mypath .. "external/misc")
 
+if detect_os() == "Windows" and mypath == "./" then
+  mypath = ""
+end
+
 opts = getopt(arg, "dexr")
 
 if opts.h then

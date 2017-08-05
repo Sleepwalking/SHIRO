@@ -22,6 +22,12 @@
 local mypath = arg[0]:match("(.-)[^\\/]+$")
 require(mypath .. "external/misc")
 
+function detect_os()
+  local uname = io.popen("uname -s"):read("*l")
+  if uname == nil then return "Windows" end
+  return uname
+end
+
 function checkpm(pm)
   if pm.phone_map == nil or type(pm.phone_map) ~= "table" then
     print("Error: attribute \"phone_map\" not found.")

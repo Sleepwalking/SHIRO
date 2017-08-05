@@ -70,8 +70,6 @@ Run them with `-h` option for the usage.
 Building
 ---
 
-It is not yet tested whether SHIRO compiles and runs on Windows (but Windows support is planned).
-
 [`ciglet`](https://github.com/Sleepwalking/ciglet) and [`liblrhsmm`](https://github.com/Sleepwalking/liblrhsmm) are the only library dependencies. You also need lua (version 5.1 or above) or luajit. No 3rd party lua library (besides those included in `external/` already) is needed.
 
 * `cd` into `ciglet`, run `make single-file`. This creates `ciglet.h` and `ciglet.c` under `ciglet/single-file/`. Copy and rename this directory to `shiro/external/ciglet`.

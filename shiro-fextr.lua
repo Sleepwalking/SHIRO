@@ -51,7 +51,7 @@ local opt_normalize = opts.n or false
 local opt_fextract = mypath .. "extractors/extractor-xxcc-mfcc12-da-16k"
 if opts.x ~= nil then opt_fextract = opts.x end
 
-local fextract = loadfile(opt_fextract .. ".lua")
+local fextract = loadfile(opt_fextract .. ".lua")()
 
 if input_index == nil then
   print("Error: shiro-fextr requires an input index file.")

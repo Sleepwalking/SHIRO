@@ -40,6 +40,7 @@ static void print_usage() {
     "shiro-init\n"
     "  -m model-file\n"
     "  -s segmentation-file\n"
+    "  -v variance-floor\n"
     "  -F (flat start, i.e., starting from uniform state duration)\n"
     "  -T (globally tied flat start)\n"
     "  -h (print usage)\n");
@@ -66,6 +67,16 @@ static void duplicate_zeroth_state(lrh_model* h) {
     }
 }
 
+static void set_variance_floor(lrh_model* h, FP_TYPE ratio) {
+  for(int l = 0; l < h -> nstream; l ++)
+    for(int i = 1; i < h -> streams[l] -> ngmm; i ++) {
+      lrh_gmm* g = h -> streams[l] -> gmms[i];
+      for(int k = 0; k < g -> nmix; k ++)
+        for(int j = 0; j < g -> ndim; j ++)
+          lrh_gmmvf(g, k, j) = lrh_gmmv(g, k, j) * ratio;
+    }
+}
+
 extern char* optarg;
 int main(int argc, char** argv) {
 # ifdef _WIN32
@@ -77,7 +88,8 @@ int main(int argc, char** argv) {
 
   int opt_flatstart = 0;
   int opt_globltied = 0;
-  while((c = getopt(argc, argv, "m:s:FTh")) != -1) {
+  FP_TYPE opt_variancefloor = 0.1;
+  while((c = getopt(argc, argv, "m:s:v:FTh")) != -1) {
     char* jsonstr = NULL;
     switch(c) {
     case 'm':
@@ -99,6 +111,9 @@ int main(int argc, char** argv) {
         return 1;
       }
       free(jsonstr);
+    break;
+    case 'v':
+      opt_variancefloor = atof(optarg);
     break;
     case 'F':
       opt_flatstart = 1;
@@ -156,6 +171,7 @@ int main(int argc, char** argv) {
 
   if(opt_globltied)
     duplicate_zeroth_state(hsmm);
+  set_variance_floor(hsmm, opt_variancefloor);
 
   cmp_ctx_t cmpobj;
   cmp_init(& cmpobj, stdout, file_reader, file_writer);

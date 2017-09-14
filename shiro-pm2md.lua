@@ -49,6 +49,10 @@ if fh == nil then
 end
 local pm = json.decode(fh:read("*a"))
 io.close(fh)
+if pm == nil then
+  print("Error: " .. input_pm .. " is not a valid JSON file.")
+  return
+end
 if shiro_cli.checkpm(pm) == false then return end
 
 local maxdurstate = 0

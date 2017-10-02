@@ -125,7 +125,7 @@ lua shiro-mkseg.lua index.csv \
   -e .param -n 36 -L sil -R sil > unaligned.json
 ```
 
-Third step: since the search space for HSMM is an order of magnitude larger than HMM, it's more efficient to start from a HMM-based forced alignment, then refine the alignment using HSMM in a pruned search space. When running HSMM training, SHIRO applies such pruning by default. You may need to increase the search space (`-p 10 -d 50`) a bit to avoid alignment errors caused by a narrowed search space, although this will make it run slower.
+Third step: since the search space for HSMM is an order of magnitude larger than HMM, it's more efficient to start from a HMM-based forced alignment, then refine the alignment using HSMM in a pruned search space. When running HSMM training, SHIRO applies such pruning by default. **You may need to increase the search space (`-p 10 -d 50`) a bit** to avoid alignment errors caused by a narrowed search space, although this will make it run slower. A rule of thumb on choosing `p` is to multiply the average number of states in a file by 0.1. For example, if on average an audio file contains 30 phonemes and each phoneme has 5 states, `p` should be 30 * 5 * 0.1 = 15. If you're doing alignment straight from HSMM, the factor would be around 0.2.
 ```bash
 ./shiro-align \
   -m trained-model.hsmm \

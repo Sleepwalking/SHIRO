@@ -118,8 +118,8 @@ int main(int argc, char** argv) {
         return 1;
       }
       int di = j_index -> valueint;
-      cJSON* j_floor = cJSON_GetObjectItem(j_dur_attr, "floor");
-      cJSON* j_ceil  = cJSON_GetObjectItem(j_dur_attr, "ceil");
+      cJSON* j_floor = cJSON_GetObjectItem(iattr, "floor");
+      cJSON* j_ceil  = cJSON_GetObjectItem(iattr, "ceil");
       if(j_floor != NULL) hsmm -> durations[di] -> floor = j_floor -> valueint;
       if(j_ceil  != NULL) hsmm -> durations[di] -> ceil  = j_ceil  -> valueint;
     }

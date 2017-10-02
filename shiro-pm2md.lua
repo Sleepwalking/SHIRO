@@ -26,16 +26,17 @@ getopt = require(mypath .. "external/getopt")
 shiro_cli = require(mypath .. "cli-common")
 require(mypath .. "external/misc")
 
-opts = getopt(arg, "d")
+opts = getopt(arg, "dt")
 
 if opts.h then
   print("Usage:")
-  print("shiro-pm2md.lua path-to-phonemap-file -d dimension")
+  print("shiro-pm2md.lua path-to-phonemap-file -d dimension -t hop-time")
   return
 end
 
 local input_pm = opts._[1]
 local ndim = tonumber(opts.d or "12")
+local thop = tonumber(opts.t or "0.01")
 
 if input_pm == nil then
   print("Error: shiro-pm2md requires an input phonemap file.")
@@ -57,7 +58,9 @@ if shiro_cli.checkpm(pm) == false then return end
 
 local maxdurstate = 0
 local maxoutstate = {}
+local dur_attr = {}
 local nstream = 0
+
 for p, pv in pairs(pm.phone_map) do
   for i, pst in ipairs(pv.states) do
     maxdurstate = math.max(maxdurstate, pst.dur + 1)
@@ -74,16 +77,31 @@ for p, pv in pairs(pm.phone_map) do
       end
     end
   end
+  if pv.durceil ~= nil then
+    for i, iceil in ipairs(pv.durceil) do
+      local nceil = math.ceil(iceil / thop)
+      dur_attr[pv.states[i].dur] = {ceil = nceil}
+    end
+  end
 end
 
 output_md = {
   ndurstate = maxdurstate,
-  streamdef = {}
+  streamdef = {},
+  dur_attr = {}
 }
 for i = 1, nstream do
   output_md.streamdef[i] =
     {nstate = maxoutstate[i], ndim = ndim, nmix = 1, weight = 1}
 end
+for i, attr in pairs(dur_attr) do
+  output_md.dur_attr[#output_md.dur_attr + 1] = {
+    index = i,
+    ceil = attr.ceil,
+    floor = attr.floor
+  }
+end
 
 print(json.encode(output_md, {indent = true,
-  keyorder = {"ndurstate", "streamdef", "nstate", "ndim", "nmix", "weight"}}))
+  keyorder = {"ndurstate", "streamdef", "nstate", "ndim", "nmix", "weight",
+    "dur_attr", "index", "ceil"}}))

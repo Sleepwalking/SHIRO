@@ -33,13 +33,13 @@ if detect_os() == "Windows" and mypath == "./" then
   mypath = ""
 end
 
-opts = getopt(arg, "dexr")
+opts = getopt(arg, "dexrD")
 
 if opts.h then
   print("Usage:")
   print("shiro-fextr.lua path-to-index-file\n" ..
         "  -d input-directory -e input-extension -x feature-extractor\n" ..
-        "  -n (normalize) -r forced-sample-rate")
+        "  -n (normalize) -D dither-level -r forced-sample-rate")
   return
 end
 
@@ -48,6 +48,7 @@ local opt_directory = (opts.d or ".") .. "/"
 local opt_forced_samplerate = opts.r or 0
 local opt_extension = opts.e or ".wav"
 local opt_normalize = opts.n or false
+local opt_dithering = tonumber(opts.D or "0")
 local opt_fextract = mypath .. "extractors/extractor-xxcc-mfcc12-da-16k"
 if opts.x ~= nil then opt_fextract = opts.x end
 
@@ -80,6 +81,7 @@ for i, entry in ipairs(file_list) do
   if opt_normalize then
     cmd_wav2raw = cmd_wav2raw .. " -N"
   end
+  cmd_wav2raw = cmd_wav2raw .. " -d " .. opt_dithering
   if opt_forced_samplerate == 0 then
     try_execute(mypath .. cmd_wav2raw .. " \"" .. infile .. "\"")
   else

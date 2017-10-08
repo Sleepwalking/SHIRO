@@ -74,6 +74,7 @@ static void print_usage() {
     "shiro-wav2raw path-to-wav-file\n"
     "  -e extension of the output\n"
     "  -r sample rate of the output\n"
+    "  -d dithering noise level\n"
     "  -N (normalize)\n"
     "  -h (print usage)\n");
   exit(1);
@@ -90,7 +91,8 @@ int main(int argc, char** argv) {
   int opt_normalize = 0;
   char* opt_extension = mystrdup(".raw");
   int opt_fs = 0;
-  while((c = getopt(argc, argv, "e:r:Nh")) != -1) {
+  float dithering = 0;
+  while((c = getopt(argc, argv, "e:r:d:Nh")) != -1) {
     switch(c) {
     case 'e':
       free(opt_extension);
@@ -102,6 +104,9 @@ int main(int argc, char** argv) {
         fprintf(stderr, "Error: invalid sample rate.\n");
         exit(1);
       }
+    break;
+    case 'd':
+      dithering = atof(optarg);
     break;
     case 'N':
       opt_normalize = 1;
@@ -127,6 +132,11 @@ int main(int argc, char** argv) {
   if(x == NULL) {
     fprintf(stderr, "Error: cannot open %s.\n", input_wav);
     exit(1);
+  }
+
+  if(dithering > 0) {
+    for(int i = 0; i < nx; i ++)
+      x[i] += randu() * dithering;
   }
   
   if(opt_normalize) {

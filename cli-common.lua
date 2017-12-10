@@ -122,6 +122,50 @@ function load_index_file(path, dir, lpad, rpad)
   return file_list
 end
 
+local function delimitcsv(str, delim)
+  local parts = {{""}}
+  local last = 1
+  for i = 1, #str do
+    local curr = string.sub(str, i, i)
+    local top = parts[#parts]
+    if curr == delim or curr == "\n" then
+      local token = string.sub(str, last, i - 1)
+      if string.byte(token, #token) == 13 then
+        token = string.sub(token, 1, #token - 1)
+      end
+      top[#top] = token
+      if curr == "\n" then
+        parts[#parts + 1] = {""}
+      else
+        top[#top + 1] = ""
+      end
+      last = i + 1
+    elseif i == #str then
+      local token = string.sub(str, last, i)
+      top[#top] = token
+    end
+  end
+  return parts
+end
+
+local function parse_lab(str)
+  local lab = delimitcsv(str, "\t")
+  if #lab > 0 and #lab[1] == 1 then
+    lab = delimitcsv(str, " ")
+  end
+  local ret = {}
+  for i = 1, #lab do
+    if #lab[i] < 2 then return ret end
+    ret[#ret + 1] = {
+      t0 = tonumber(lab[i][1]),
+      t1 = tonumber(lab[i][2]),
+      label = lab[i][3]
+    }
+  end
+  return ret
+end
+
 return {checkpm = checkpm,
   checkseg = checkseg,
-  load_index_file = load_index_file}
+  load_index_file = load_index_file,
+  parse_lab = parse_lab}

@@ -142,12 +142,19 @@ static void main_xxcc() {
   FP_TYPE norm_factor, weight_factor;
   cig_stft_forward(x, nx, naxis, nwin, nfrm, nfft, "blackman", 0, 2,
     & norm_factor, & weight_factor, S, NULL);
+  for(int i = 0; i < nfrm; i ++)
+    for(int j = 0; j < nfft / 2 + 1; j ++)
+      S[i][j] *= S[i][j]; // take the power
 
   // filtering and DCT
 
   FP_TYPE** Be = NULL;
-  if(! strcmp(opt_featuretype, "mfcc"))
+  if(! strcmp(opt_featuretype, "mfcc")) {
     Be = filterbank_spgm(fb, S, nfrm, nfft, opt_fs, 0);
+    for(int i = 0; i < nfrm; i ++)
+      for(int j = 0; j < opt_nchannel; j ++)
+        Be[i][j] = exp(Be[i][j]);
+  }
   else if(! strcmp(opt_featuretype, "plpcc"))
     Be = filterbank_spgm(fb, S, nfrm, nfft, opt_fs, 1);
 

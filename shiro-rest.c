@@ -27,6 +27,7 @@
 #include "external/liblrhsmm/common.h"
 #include "external/liblrhsmm/estimate.h"
 #include "external/liblrhsmm/serial.h"
+#include <omp.h>
 
 #ifdef _WIN32
 #include <fcntl.h>
@@ -46,6 +47,7 @@ static void print_usage() {
     "  -P state-level-pruning (HMM)\n"
     "  -d extra-duration-search-space\n"
     "  -D (DAEM training)\n"
+    "  -T (enable multi-threading)\n"
     "  -h (print usage)\n");
   exit(1);
 }
@@ -62,7 +64,8 @@ int main(int argc, char** argv) {
   int opt_niter = 1;
   int opt_geodur = 0;
   int opt_daem = 0;
-  while((c = getopt(argc, argv, "m:s:n:gp:P:d:Dh")) != -1) {
+  int opt_mthread = 0;
+  while((c = getopt(argc, argv, "m:s:n:gp:P:d:DTh")) != -1) {
     char* jsonstr = NULL;
     switch(c) {
     case 'm':
@@ -103,6 +106,9 @@ int main(int argc, char** argv) {
     case 'D':
       opt_daem = 1;
     break;
+    case 'T':
+      opt_mthread = 1;
+    break;
     case 'h':
       print_usage();
     break;
@@ -118,6 +124,14 @@ int main(int argc, char** argv) {
     fprintf(stderr, "Error: model file is not specified.\n");
     return 1;
   }
+# ifdef _OPENMP
+  if(opt_mthread == 0)
+    omp_set_num_threads(1);
+# endif
+# ifndef _OPENMP
+  if(opt_mthread == 1)
+    fprintf(stderr, "Warning: OpenMP is not supported by this build.\n");
+# endif
 
   cJSON* j_file_list = cJSON_GetObjectItem(j_segm, "file_list");
   checkvar(file_list);
@@ -136,6 +150,7 @@ int main(int argc, char** argv) {
 
     lrh_model_stat* hstat = lrh_model_stat_from_model(hsmm);
     lrh_model_precompute(hsmm);
+#   pragma omp parallel for
     for(int f = 0; f < nfile; f ++) {
       cJSON* j_file_list_f = cJSON_GetArrayItem(j_file_list, f);
       cJSON* j_filename = cJSON_GetObjectItem(j_file_list_f, "filename");

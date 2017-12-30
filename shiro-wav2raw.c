@@ -134,11 +134,6 @@ int main(int argc, char** argv) {
     exit(1);
   }
 
-  if(dithering > 0) {
-    for(int i = 0; i < nx; i ++)
-      x[i] += randu() * dithering;
-  }
-  
   if(opt_normalize) {
     FP_TYPE maxampl = 0;
     for(int i = 0; i < nx; i ++)
@@ -146,6 +141,11 @@ int main(int argc, char** argv) {
         maxampl = fabs(x[i]);
     for(int i = 0; i < nx; i ++)
       x[i] /= maxampl;
+  }
+
+  if(dithering > 0) {
+    for(int i = 0; i < nx; i ++)
+      x[i] += randu() * dithering;
   }
   
   if(opt_fs > 0 && opt_fs != fs) { // needs resampling

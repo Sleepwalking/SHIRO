@@ -46,6 +46,7 @@ static void print_usage() {
     "  -p state-level-pruning (HSMM)\n"
     "  -P state-level-pruning (HMM)\n"
     "  -d extra-duration-search-space\n"
+    "  -t termination-threshold\n"
     "  -D (DAEM training)\n"
     "  -T (enable multi-threading)\n"
     "  -h (print usage)\n");
@@ -65,7 +66,8 @@ int main(int argc, char** argv) {
   int opt_geodur = 0;
   int opt_daem = 0;
   int opt_mthread = 0;
-  while((c = getopt(argc, argv, "m:s:n:gp:P:d:DTh")) != -1) {
+  FP_TYPE opt_threshold = 1.0;
+  while((c = getopt(argc, argv, "m:s:n:gp:P:d:t:DTh")) != -1) {
     char* jsonstr = NULL;
     switch(c) {
     case 'm':
@@ -102,6 +104,9 @@ int main(int argc, char** argv) {
     break;
     case 'd':
       lrh_inference_duration_extra = atoi(optarg);
+    break;
+    case 't':
+      opt_threshold = atof(optarg);
     break;
     case 'D':
       opt_daem = 1;
@@ -183,7 +188,7 @@ int main(int argc, char** argv) {
 
     FP_TYPE mean_lh = total_lh / nfile / lrh_daem_temperature;
     fprintf(stderr, "Average log likelihood = %f.\n", mean_lh);
-    if(iter > 0 && mean_lh < prev_lh + 1.0) {
+    if(iter > 0 && opt_threshold > 0 && mean_lh < prev_lh + opt_threshold) {
       fprintf(stderr, "Training converged.\n");
       break;
     }

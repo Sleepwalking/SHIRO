@@ -137,6 +137,7 @@ int main(int argc, char** argv) {
   checkvar(file_list);
   int nfile = cJSON_GetArraySize(j_file_list);
 
+  FP_TYPE prev_lh = 0;
   for(int iter = 0; iter < opt_niter; iter ++) {
     if(opt_daem) {
       lrh_daem_temperature = sqrt((FP_TYPE)(iter + 1) / opt_niter);
@@ -180,8 +181,13 @@ int main(int argc, char** argv) {
       lrh_model_update(hsmm, hstat, 0);
     lrh_delete_model_stat(hstat);
 
-    fprintf(stderr, "Average log likelihood = %f.\n",
-      total_lh / nfile / lrh_daem_temperature);
+    FP_TYPE mean_lh = total_lh / nfile / lrh_daem_temperature;
+    fprintf(stderr, "Average log likelihood = %f.\n", mean_lh);
+    if(iter > 0 && mean_lh < prev_lh + 1.0) {
+      fprintf(stderr, "Training converged.\n");
+      break;
+    }
+    prev_lh = mean_lh;
   }
 
   cmp_ctx_t cmpobj;

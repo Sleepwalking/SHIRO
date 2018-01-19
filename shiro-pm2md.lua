@@ -72,9 +72,9 @@ for p, pv in pairs(pm.phone_map) do
         print("Error: inconsistent number of streams.")
         return
       end
-      for j = 1, nstream do
-        maxoutstate[j] = math.max(maxoutstate[j], pst.out[j] + 1)
-      end
+    end
+    for j = 1, nstream do
+      maxoutstate[j] = math.max(maxoutstate[j], pst.out[j] + 1)
     end
   end
   if pv.durceil ~= nil then

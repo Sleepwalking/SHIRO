@@ -64,6 +64,8 @@ SHIRO consists of the following tools,
 | `shiro-pm2md.lua` | utility for creating model definition from phonemap | phonemap | model def. |
 | `shiro-mkseg.lua` | utility for creating segmentation file from `.csv` table | `.csv` file | segmentation |
 | `shiro-seg2lab.lua` | utility for converting segmentation file into Audacity label | segmentation | Audacity label files |
+| `shiro-lab2seg.lua` | utility for converting Audacity label into segmentation files | Audacity label files, .csv index | segmentation |
+| `shiro-wavsplit.lua` | a Lua script for utterance-level segmentation | `.wav` file | segmentation, Audacity label file, model |
 
 Run them with `-h` option for the usage.
 

@@ -1,7 +1,7 @@
 --[[
   SHIRO
   ===
-  Copyright (c) 2017 Kanru Hua. All rights reserved.
+  Copyright (c) 2017-2018 Kanru Hua. All rights reserved.
 
   This file is part of SHIRO.
 
@@ -26,6 +26,11 @@ function detect_os()
   local uname = io.popen("uname -s"):read("*l")
   if uname == nil then return "Windows" end
   return uname
+end
+
+function fileparts(path)
+  -- directory, full name, extension
+  return string.match(path, "(.-)([^\\/]-%.?([^%.\\/]*))$")
 end
 
 function checkpm(pm)

@@ -1,7 +1,7 @@
 /*
   SHIRO
   ===
-  Copyright (c) 2017 Kanru Hua. All rights reserved.
+  Copyright (c) 2017-2018 Kanru Hua. All rights reserved.
 
   This file is part of SHIRO.
 
@@ -128,40 +128,35 @@ static void main_xxcc() {
     exit(1);
   }
 
-  // spectrogram analysis
-
-  int nfrm = nx / opt_hopsize;
-  int* naxis = calloc(nfrm, sizeof(int));
-  int* nwin = calloc(nfrm, sizeof(int));
-  for(int i = 0; i < nfrm; i ++) {
-    naxis[i] = opt_hopsize * i;
-    nwin[i] = opt_framesize;
-  }
-
-  FP_TYPE** S = malloc2d(nfrm, nfft / 2 + 1, sizeof(FP_TYPE));
-  FP_TYPE norm_factor, weight_factor;
-  cig_stft_forward(x, nx, naxis, nwin, nfrm, nfft, "blackman", 0, 2,
-    & norm_factor, & weight_factor, S, NULL);
-
   // filtering and DCT
 
-  FP_TYPE** Be = NULL;
-  if(! strcmp(opt_featuretype, "mfcc")) {
-    Be = filterbank_spgm(fb, S, nfrm, nfft, opt_fs, 0);
-    for(int i = 0; i < nfrm; i ++) {
-      for(int j = 0; j < opt_nchannel; j ++)
-        Be[i][j] = max(-15.0, Be[i][j]);
-    }
+  int nfrm = nx / opt_hopsize;
+  FP_TYPE** Be = calloc(nfrm, sizeof(FP_TYPE*));
+  FP_TYPE* w = blackman(opt_framesize);
+  for(int i = 0; i < nfrm; i ++) {
+    int center = opt_hopsize * i;
+    FP_TYPE* xfrm = fetch_frame(x, nx, center, opt_framesize);
+    FP_TYPE* fftbuff = calloc(nfft * 4, sizeof(FP_TYPE));
+    FP_TYPE* x_re = fftbuff; FP_TYPE* x_im = fftbuff + nfft;
+    for(int j = 0; j < opt_framesize; j ++)
+      x_re[j] = xfrm[j] * w[j];
+    fft(x_re, NULL, x_re, x_im, nfft, fftbuff + nfft * 2);
+    for(int j = 0; j < nfft; j ++)
+      x_re[j] = sqrt(x_re[j] * x_re[j] + x_im[j] * x_im[j]);
+    if(! strcmp(opt_featuretype, "plpcc"))
+      Be[i] = filterbank_spec(fb, x_re, nfft, opt_fs, 1);
+    else
+      Be[i] = filterbank_spec(fb, x_re, nfft, opt_fs, 0);
+    for(int j = 0; j < opt_nchannel; j ++)
+      Be[i][j] = max(-15.0, Be[i][j]);
+    free(fftbuff);
+    free(xfrm);
   }
-  else if(! strcmp(opt_featuretype, "plpcc"))
-    Be = filterbank_spgm(fb, S, nfrm, nfft, opt_fs, 1);
 
   FP_TYPE** C = calloc(nfrm, sizeof(FP_TYPE*));
   for(int i = 0; i < nfrm; i ++)
     C[i] = be2cc(Be[i], opt_nchannel, opt_order, opt_e);
 
-  free2d(S, nfrm);
-  free(naxis); free(nwin);
   free2d(Be, nfrm);
 
   // differentiation

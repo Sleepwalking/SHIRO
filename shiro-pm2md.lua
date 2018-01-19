@@ -1,7 +1,7 @@
 --[[
   SHIRO
   ===
-  Copyright (c) 2017 Kanru Hua. All rights reserved.
+  Copyright (c) 2017-2018 Kanru Hua. All rights reserved.
 
   This file is part of SHIRO.
 
@@ -81,6 +81,17 @@ for p, pv in pairs(pm.phone_map) do
     for i, iceil in ipairs(pv.durceil) do
       local nceil = math.ceil(iceil / thop)
       dur_attr[pv.states[i].dur] = {ceil = nceil}
+    end
+  end
+  if pv.durfloor ~= nil then
+    for i, ifloor in ipairs(pv.durfloor) do
+      local nfloor = math.ceil(ifloor / thop)
+      local dst = dur_attr[pv.states[i].dur]
+      if dst == nil then
+        dst = {}
+        dur_attr[pv.states[i].dur] = dst
+      end
+      dst.floor = nfloor
     end
   end
 end

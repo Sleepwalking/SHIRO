@@ -1,7 +1,7 @@
 --[[
   SHIRO
   ===
-  Copyright (c) 2017 Kanru Hua. All rights reserved.
+  Copyright (c) 2017-2018 Kanru Hua. All rights reserved.
 
   This file is part of SHIRO.
 
@@ -21,8 +21,11 @@
 
 local mypath = arg[0]:match("(.-)[^\\/]+$")
 
-json = require(mypath .. "external/dkjson")
-getopt = require(mypath .. "external/getopt")
+package.path = package.path .. ";" ..
+  mypath .. "?.lua;" .. mypath .. "external/?.lua"
+
+json = require("dkjson")
+getopt = require("getopt")
 
 opts = getopt(arg, "sSt")
 

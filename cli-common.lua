@@ -19,8 +19,7 @@
   along with SHIRO.  If not, see <http://www.gnu.org/licenses/>.
 ]]
 
-local mypath = arg[0]:match("(.-)[^\\/]+$")
-require(mypath .. "external/misc")
+require("misc")
 
 function detect_os()
   local uname = io.popen("uname -s"):read("*l")

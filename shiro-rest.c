@@ -1,7 +1,7 @@
 /*
   SHIRO
   ===
-  Copyright (c) 2017 Kanru Hua. All rights reserved.
+  Copyright (c) 2017-2018 Kanru Hua. All rights reserved.
 
   This file is part of SHIRO.
 
@@ -47,10 +47,51 @@ static void print_usage() {
     "  -P state-level-pruning (HMM)\n"
     "  -d extra-duration-search-space\n"
     "  -t termination-threshold\n"
+    "  -e (embedded training)\n"
     "  -D (DAEM training)\n"
     "  -T (enable multi-threading)\n"
     "  -h (print usage)\n");
   exit(1);
+}
+
+int opt_niter = 1;
+int opt_geodur = 0;
+int opt_daem = 0;
+int opt_mthread = 0;
+int opt_embdtrain = 0;
+
+FP_TYPE reestimate(lrh_model_stat* hstat, lrh_model* hsmm, lrh_observ* o,
+  cJSON* j_states) {
+  FP_TYPE lh = 0;
+  if(opt_embdtrain) {
+    lrh_dataset* d = load_embedded_data_from_json(j_states, o);
+    int nsample = d -> observset -> nsample;
+    for(int e = 0; e < nsample; e ++) {
+      lrh_seg* es = d -> segset -> samples[e];
+      lrh_observ* eo = d -> observset -> samples[e];
+      for(int i = 0; i < es -> nseg; i ++)
+        if(es -> time[i] > eo -> nt)
+          es -> time[i] = eo -> nt;
+      lrh_seg_buildjumps(es);
+      if(opt_geodur)
+        lh += lrh_estimate_geometric(hstat, hsmm, eo, es) / nsample;
+      else
+        lh += lrh_estimate(hstat, hsmm, eo, es) / nsample;
+    }
+    delete_dataset(d);
+  } else {
+    lrh_seg* s = load_seg_from_json(j_states, hsmm -> nstream);
+    for(int i = 0; i < s -> nseg; i ++)
+      if(s -> time[i] > o -> nt)
+        s -> time[i] = o -> nt;
+    lrh_seg_buildjumps(s);
+    if(opt_geodur)
+      lh += lrh_estimate_geometric(hstat, hsmm, o, s);
+    else
+      lh += lrh_estimate(hstat, hsmm, o, s);
+    lrh_delete_seg(s);
+  }
+  return lh;
 }
 
 extern char* optarg;
@@ -62,12 +103,8 @@ int main(int argc, char** argv) {
   cJSON* j_segm = NULL;
   lrh_model* hsmm = NULL;
 
-  int opt_niter = 1;
-  int opt_geodur = 0;
-  int opt_daem = 0;
-  int opt_mthread = 0;
   FP_TYPE opt_threshold = 1.0;
-  while((c = getopt(argc, argv, "m:s:n:gp:P:d:t:DTh")) != -1) {
+  while((c = getopt(argc, argv, "m:s:n:gp:P:d:t:eDTh")) != -1) {
     char* jsonstr = NULL;
     switch(c) {
     case 'm':
@@ -107,6 +144,9 @@ int main(int argc, char** argv) {
     break;
     case 't':
       opt_threshold = atof(optarg);
+    break;
+    case 'E':
+      opt_embdtrain = 1;
     break;
     case 'D':
       opt_daem = 1;
@@ -163,20 +203,9 @@ int main(int argc, char** argv) {
       checkvar(filename);
       cJSON* j_states = cJSON_GetObjectItem(j_file_list_f, "states");
       checkvar(states);
-
+      
       lrh_observ* o = load_observ_from_float(j_filename -> valuestring, hsmm);
-      lrh_seg* s = load_seg_from_json(j_states, hsmm -> nstream);
-      for(int i = 0; i < s -> nseg; i ++)
-        if(s -> time[i] > o -> nt)
-          s -> time[i] = o -> nt;
-      lrh_seg_buildjumps(s);
-
-      if(opt_geodur)
-        total_lh += lrh_estimate_geometric(hstat, hsmm, o, s);
-      else
-        total_lh += lrh_estimate(hstat, hsmm, o, s);
-
-      lrh_delete_seg(s);
+      total_lh += reestimate(hstat, hsmm, o, j_states);
       lrh_delete_observ(o);
     }
 

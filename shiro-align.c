@@ -1,7 +1,7 @@
 /*
   SHIRO
   ===
-  Copyright (c) 2017 Kanru Hua. All rights reserved.
+  Copyright (c) 2017-2018 Kanru Hua. All rights reserved.
 
   This file is part of SHIRO.
 
@@ -44,8 +44,96 @@ static void print_usage() {
     "  -p state-level-pruning (HSMM)\n"
     "  -P state-level-pruning (HMM)\n"
     "  -d extra-duration-search-space\n"
+    "  -e (embedded alignment)\n"
     "  -h (print usage)\n");
   exit(1);
+}
+
+int opt_geodur = 0;
+int opt_embdalign = 0;
+
+static cJSON* align(lrh_model* hsmm, lrh_observ* o, cJSON* j_states) {
+  FP_TYPE* outp = NULL;
+  if(opt_embdalign) {
+      lrh_dataset* d = load_embedded_data_from_json(j_states, o);
+      int nsample = d -> observset -> nsample;
+      int** realign_all = calloc(nsample, sizeof(int*));
+      for(int e = 0; e < nsample; e ++) {
+        lrh_seg* es = d -> segset -> samples[e];
+        lrh_observ* eo = d -> observset -> samples[e];
+        for(int i = 0; i < es -> nseg; i ++)
+          if(es -> time[i] > eo -> nt)
+            es -> time[i] = eo -> nt;
+        lrh_seg_buildjumps(es);
+        if(opt_geodur) {
+          outp = lrh_sample_outputprob_lg_full(hsmm, eo, es);
+          int* realign = lrh_viterbi_geometric(hsmm, es, outp, eo -> nt, NULL);
+          realign_all[e] = calloc(es -> nseg * 2 + 2, sizeof(int));
+          for(int i = 0; i < es -> nseg; i ++) {
+            realign_all[e][i * 2 + 0] = realign[i];
+            realign_all[e][i * 2 + 1] = i;
+          }
+          realign_all[e][es -> nseg * 2] = -1;
+          free(realign);
+        } else {
+          outp = lrh_sample_outputprob_lg(hsmm, eo, es);
+          int* realign = lrh_viterbi(hsmm, es, outp, eo -> nt, NULL);
+          realign_all[e] = realign;
+        }
+        free(outp);
+      }
+      int nseg = 0;
+      for(int e = 0; e < nsample; e ++) {
+        int i = 0;
+        while(realign_all[e][i * 2] != -1) i ++;
+        nseg += i;
+      }
+      int t_base = 0;
+      int s_base = 0;
+      int* realign = calloc(nseg * 2 + 2, sizeof(int));
+      realign[nseg * 2] = -1;
+      nseg = 0;
+      for(int e = 0; e < nsample; e ++) {
+        int i = 0;
+        while(realign_all[e][i * 2] != -1) {
+          realign[nseg * 2 + 0] = realign_all[e][i * 2 + 0] + t_base;
+          realign[nseg * 2 + 1] = realign_all[e][i * 2 + 1] + s_base;
+          nseg ++;
+          i ++;
+        }
+        t_base = realign[nseg * 2 - 2];
+        s_base += d -> segset -> samples[e] -> nseg;
+        free(realign_all[e]);
+      }
+      free(realign_all);
+      lrh_seg* s = load_seg_from_json(j_states, hsmm -> nstream);
+      j_states = json_from_seg_shuffle(s, j_states, realign);
+      lrh_delete_seg(s);
+      free(realign);
+      delete_dataset(d);
+  } else {
+    lrh_seg* s = load_seg_from_json(j_states, hsmm -> nstream);
+    for(int i = 0; i < s -> nseg; i ++)
+      if(s -> time[i] > o -> nt)
+        s -> time[i] = o -> nt;
+    lrh_seg_buildjumps(s);
+
+    int* realign = NULL;
+    if(opt_geodur) {
+      outp = lrh_sample_outputprob_lg_full(hsmm, o, s);
+      realign = lrh_viterbi_geometric(hsmm, s, outp, o -> nt, NULL);
+      for(int i = 0; i < s -> nseg; i ++)
+        s -> time[i] = realign[i];
+      j_states = json_from_seg(s, j_states);
+    } else {
+      outp = lrh_sample_outputprob_lg(hsmm, o, s);
+      realign = lrh_viterbi(hsmm, s, outp, o -> nt, NULL);
+      j_states = json_from_seg_shuffle(s, j_states, realign);
+    }
+    free(outp); free(realign);
+    lrh_delete_seg(s);
+  }
+  return j_states;
 }
 
 extern char* optarg;
@@ -57,8 +145,7 @@ int main(int argc, char** argv) {
   cJSON* j_segm = NULL;
   lrh_model* hsmm = NULL;
 
-  int opt_geodur = 0;
-  while((c = getopt(argc, argv, "m:s:gp:P:d:h")) != -1) {
+  while((c = getopt(argc, argv, "m:s:gp:P:d:eh")) != -1) {
     char* jsonstr = NULL;
     switch(c) {
     case 'm':
@@ -93,6 +180,9 @@ int main(int argc, char** argv) {
     case 'd':
       lrh_inference_duration_extra = atoi(optarg);
     break;
+    case 'E':
+      opt_embdalign = 1;
+    break;
     case 'h':
       print_usage();
     break;
@@ -122,30 +212,8 @@ int main(int argc, char** argv) {
     checkvar(states);
 
     lrh_observ* o = load_observ_from_float(j_filename -> valuestring, hsmm);
-    lrh_seg* s = load_seg_from_json(j_states, hsmm -> nstream);
-    for(int i = 0; i < s -> nseg; i ++)
-      if(s -> time[i] > o -> nt)
-        s -> time[i] = o -> nt;
-    lrh_seg_buildjumps(s);
-
-    FP_TYPE* outp = NULL;
-    int* realign = NULL;
-    if(opt_geodur) {
-      outp = lrh_sample_outputprob_lg_full(hsmm, o, s);
-      realign = lrh_viterbi_geometric(hsmm, s, outp, o -> nt, NULL);
-      for(int i = 0; i < s -> nseg; i ++)
-        s -> time[i] = realign[i];
-      j_states = json_from_seg(s, j_states);
-    } else {
-      outp = lrh_sample_outputprob_lg(hsmm, o, s);
-      realign = lrh_viterbi(hsmm, s, outp, o -> nt, NULL);
-      j_states = json_from_seg_shuffle(s, j_states, realign);
-    }
-    free(outp); free(realign);
-
+    j_states = align(hsmm, o, j_states);
     cJSON_ReplaceItemInObject(j_file_list_f, "states", j_states);
-
-    lrh_delete_seg(s);
     lrh_delete_observ(o);
   }
 

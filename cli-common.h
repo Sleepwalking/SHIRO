@@ -1,7 +1,7 @@
 /*
   SHIRO
   ===
-  Copyright (c) 2017 Kanru Hua. All rights reserved.
+  Copyright (c) 2017-2018 Kanru Hua. All rights reserved.
 
   This file is part of SHIRO.
 
@@ -138,7 +138,7 @@ static lrh_seg* load_seg_from_json(cJSON* j_states, int nstream) {
         cJSON* j_jmp_d = cJSON_GetObjectItem(j_jmp_k, "d");
         cJSON* j_jmp_p = cJSON_GetObjectItem(j_jmp_k, "p");
         checkvar(jmp_d); checkvar(jmp_p);
-        if(j_jmp_d ->valueint != 1) {
+        if(j_jmp_d -> valueint != 1) {
           s -> djump_out[i][k] = j_jmp_d -> valueint;
           s -> pjump_out[i][k] = j_jmp_p -> valuedouble;
           pnext -= j_jmp_p -> valuedouble;
@@ -149,6 +149,120 @@ static lrh_seg* load_seg_from_json(cJSON* j_states, int nstream) {
     }
   }
   return s;
+}
+
+static int get_group_size(cJSON* j_curr_state) {
+  int nstate = 0;
+  int curr_state_idx = 0;
+  while(j_curr_state != NULL) {
+    nstate ++;
+    cJSON* j_ext = cJSON_GetObjectItem(j_curr_state, "ext");
+    checkvar(ext);
+    cJSON* j_ext_state = cJSON_GetArrayItem(j_ext, 1);
+    if(j_ext_state == NULL) {
+      fprintf(stderr, "Error: state index missing in attribute \"ext\".\n");
+      exit(1);
+    }
+    if(j_ext_state -> valueint < curr_state_idx) {
+      nstate --;
+      break;
+    }
+    curr_state_idx = j_ext_state -> valueint;
+    j_curr_state = j_curr_state -> next;
+  }
+  return nstate;
+}
+
+static void load_embedded_seg_from_json(lrh_seg* dstsg, cJSON* j_states,
+  int curr_state, int curr_time) {
+  cJSON* j_states_i = cJSON_GetArrayItem(j_states, curr_state);
+  int nstate = get_group_size(j_states_i);
+  int nstream = dstsg -> nstream;
+  for(int i = 0; i < nstate; i ++) {
+    cJSON* j_time = cJSON_GetObjectItem(j_states_i, "time");
+    cJSON* j_dur  = cJSON_GetObjectItem(j_states_i, "dur");
+    cJSON* j_out  = cJSON_GetObjectItem(j_states_i, "out");
+    checkvar(time); checkvar(dur); checkvar(out);
+    dstsg -> time[i] = j_time -> valueint - curr_time;
+    dstsg -> durstate[i] = j_out -> valueint;
+    //fprintf(stderr, "%d %d %d\n", i, dstsg -> time[i], dstsg -> durstate[i]);
+    int nstream_json = cJSON_GetArraySize(j_out);
+    if(nstream_json != nstream) {
+      fprintf(stderr, "Error: inconsistent stream sizes.\n");
+      exit(1);
+    }
+    for(int l = 0; l < nstream; l ++) {
+      cJSON* j_out_l = cJSON_GetArrayItem(j_out, l);
+      dstsg -> outstate[l][i] = j_out_l -> valueint;
+    }
+    cJSON* j_jmp = cJSON_GetObjectItem(j_states_i, "jmp");
+    if(j_jmp != NULL) {
+      int njmp = cJSON_GetArraySize(j_jmp);
+      int njmp_valid = 0;
+      FP_TYPE pnext = 1.0;
+      dstsg -> djump_out[i] = realloc(dstsg -> djump_out[i],
+        (njmp + 1) * sizeof(int));
+      dstsg -> pjump_out[i] = realloc(dstsg -> pjump_out[i],
+        (njmp + 1) * sizeof(FP_TYPE));
+      for(int k = 0; k < njmp; k ++) {
+        cJSON* j_jmp_k = cJSON_GetArrayItem(j_jmp, k);
+        cJSON* j_jmp_d = cJSON_GetObjectItem(j_jmp_k, "d");
+        cJSON* j_jmp_p = cJSON_GetObjectItem(j_jmp_k, "p");
+        checkvar(jmp_d); checkvar(jmp_p);
+        int d = j_jmp_d -> valueint;
+        // skip right transitions and cross-boundary transitions
+        if(d != 1 && k + d <= nstate) {
+          dstsg -> djump_out[i][k] = j_jmp_d -> valueint;
+          dstsg -> pjump_out[i][k] = j_jmp_p -> valuedouble;
+          pnext -= j_jmp_p -> valuedouble;
+          njmp_valid ++;
+        }
+      }
+      dstsg -> djump_out[i][njmp_valid] = 1;
+      dstsg -> pjump_out[i][njmp_valid] = pnext;
+    }
+    j_states_i = j_states_i -> next;
+  }
+}
+
+static lrh_dataset* load_embedded_data_from_json(cJSON* j_states, lrh_observ* o) {
+  int nseg = cJSON_GetArraySize(j_states);
+  lrh_dataset* ret = malloc(sizeof(lrh_dataset));
+  int ngroup = 0;
+  int nstream = o -> nstream;
+  for(int i = 0; i < nseg; i ++) {
+    cJSON* j_states_i = cJSON_GetArrayItem(j_states, i);
+    int nstate = get_group_size(j_states_i);
+    ngroup ++;
+    i += nstate - 1;
+  }
+  ret -> observset = lrh_create_empty_observset(ngroup);
+  ret -> segset = lrh_create_empty_segset(ngroup);
+  int curr_time = 0;
+  int curr_state = 0;
+  for(int i = 0; i < ngroup; i ++) {
+    cJSON* j_curr_state = cJSON_GetArrayItem(j_states, curr_state);
+    int nstate = get_group_size(j_curr_state);
+    cJSON* j_last_state = cJSON_GetArrayItem(j_states, curr_state + nstate - 1);
+    cJSON* j_time = cJSON_GetObjectItem(j_last_state, "time");
+    checkvar(time);
+    int next_time = j_time -> valueint;
+    ret -> observset -> samples[i] = lrh_create_observ(nstream,
+      next_time - curr_time, o -> ndim);
+    ret -> segset -> samples[i] = lrh_create_seg(nstream, nstate);
+    lrh_observ* dstob = ret -> observset -> samples[i];
+    lrh_seg* dstsg = ret -> segset -> samples[i];
+    // copy the segmentation for group i
+    load_embedded_seg_from_json(dstsg, j_states, curr_state, curr_time);
+    // copy the observation for group i
+    for(int l = 0; l < nstream; l ++)
+      for(int t = 0; t < next_time - curr_time; t ++)
+        for(int n = 0; n < o -> ndim[l]; n ++)
+          lrh_obm(dstob, t, n, l) = lrh_obm(o, t + curr_time, n, l);
+    curr_time = next_time;
+    curr_state += nstate;
+  }
+  return ret;
 }
 
 // if j_states_in is available (i.e. not NULL), copy over ext attribute
@@ -203,3 +317,11 @@ static cJSON* json_from_seg_shuffle(lrh_seg* s, cJSON* j_states_in, int* shufidx
   }
   return j_states;
 }
+
+static void delete_dataset(lrh_dataset* dst) {
+  if(dst == NULL) return;
+  lrh_delete_segset(dst -> segset);
+  lrh_delete_observset(dst -> observset);
+  free(dst);
+}
+

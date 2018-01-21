@@ -47,9 +47,11 @@ static void print_usage() {
     "  -P state-level-pruning (HMM)\n"
     "  -d extra-duration-search-space\n"
     "  -t termination-threshold\n"
+    "  -l export-likelihood-file\n"
     "  -i (isolated training)\n"
     "  -D (DAEM training)\n"
     "  -T (enable multi-threading)\n"
+    "  -M (display-mean-frame-likelihood)\n"
     "  -h (print usage)\n");
   exit(1);
 }
@@ -58,7 +60,9 @@ int opt_niter = 1;
 int opt_geodur = 0;
 int opt_daem = 0;
 int opt_mthread = 0;
+int opt_meanlikelihood = 0;
 int opt_embdtrain = 1;
+FILE* fp_likelihood = NULL;
 
 FP_TYPE reestimate(lrh_model_stat* hstat, lrh_model* hsmm, lrh_observ* o,
   cJSON* j_states) {
@@ -73,10 +77,16 @@ FP_TYPE reestimate(lrh_model_stat* hstat, lrh_model* hsmm, lrh_observ* o,
         if(es -> time[i] > eo -> nt)
           es -> time[i] = eo -> nt;
       lrh_seg_buildjumps(es);
+      FP_TYPE e_lh = 0;
       if(opt_geodur)
-        lh += lrh_estimate_geometric(hstat, hsmm, eo, es) / nsample;
+        e_lh = lrh_estimate_geometric(hstat, hsmm, eo, es);
       else
-        lh += lrh_estimate(hstat, hsmm, eo, es) / nsample;
+        e_lh = lrh_estimate(hstat, hsmm, eo, es);
+      if(opt_meanlikelihood)
+        e_lh /= eo -> nt;
+      if(fp_likelihood != NULL)
+        fprintf(fp_likelihood, "%f%s", e_lh, e == nsample - 1 ? "\n" : ",");
+      lh += e_lh / nsample;
     }
     delete_dataset(d);
   } else {
@@ -86,9 +96,13 @@ FP_TYPE reestimate(lrh_model_stat* hstat, lrh_model* hsmm, lrh_observ* o,
         s -> time[i] = o -> nt;
     lrh_seg_buildjumps(s);
     if(opt_geodur)
-      lh += lrh_estimate_geometric(hstat, hsmm, o, s);
+      lh = lrh_estimate_geometric(hstat, hsmm, o, s);
     else
-      lh += lrh_estimate(hstat, hsmm, o, s);
+      lh = lrh_estimate(hstat, hsmm, o, s);
+    if(opt_meanlikelihood)
+      lh /= o -> nt;
+    if(fp_likelihood != NULL)
+      fprintf(fp_likelihood, "%f\n", lh);
     lrh_delete_seg(s);
   }
   return lh;
@@ -104,7 +118,7 @@ int main(int argc, char** argv) {
   lrh_model* hsmm = NULL;
 
   FP_TYPE opt_threshold = 1.0;
-  while((c = getopt(argc, argv, "m:s:n:gp:P:d:t:iDTh")) != -1) {
+  while((c = getopt(argc, argv, "m:s:n:gp:P:d:t:l:iDTMh")) != -1) {
     char* jsonstr = NULL;
     switch(c) {
     case 'm':
@@ -148,11 +162,21 @@ int main(int argc, char** argv) {
     case 'i':
       opt_embdtrain = 0;
     break;
+    case 'l':
+      fp_likelihood = fopen(optarg, "w");
+      if(fp_likelihood == NULL) {
+        fprintf(stderr, "Error: cannot create %s\n", optarg);
+        exit(1);
+      }
+    break;
     case 'D':
       opt_daem = 1;
     break;
     case 'T':
       opt_mthread = 1;
+    break;
+    case 'M':
+      opt_meanlikelihood = 1;
     break;
     case 'h':
       print_usage();
@@ -168,6 +192,10 @@ int main(int argc, char** argv) {
   if(hsmm == NULL) {
     fprintf(stderr, "Error: model file is not specified.\n");
     return 1;
+  }
+  if(fp_likelihood != NULL && opt_mthread == 1) {
+    fprintf(stderr, "Warning: multi-threading disabled due to -l option.\n");
+    opt_mthread = 0;
   }
 # ifdef _OPENMP
   if(opt_mthread == 0)
@@ -230,5 +258,7 @@ int main(int argc, char** argv) {
 
   cJSON_Delete(j_segm);
   lrh_delete_model(hsmm);
+  if(fp_likelihood != NULL) fclose(fp_likelihood);
   return 0;
 }
+

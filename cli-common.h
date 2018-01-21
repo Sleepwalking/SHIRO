@@ -184,8 +184,7 @@ static void load_isolated_seg_from_json(lrh_seg* dstsg, cJSON* j_states,
     cJSON* j_out  = cJSON_GetObjectItem(j_states_i, "out");
     checkvar(time); checkvar(dur); checkvar(out);
     dstsg -> time[i] = j_time -> valueint - curr_time;
-    dstsg -> durstate[i] = j_out -> valueint;
-    //fprintf(stderr, "%d %d %d\n", i, dstsg -> time[i], dstsg -> durstate[i]);
+    dstsg -> durstate[i] = j_dur -> valueint;
     int nstream_json = cJSON_GetArraySize(j_out);
     if(nstream_json != nstream) {
       fprintf(stderr, "Error: inconsistent stream sizes.\n");

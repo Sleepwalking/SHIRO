@@ -173,7 +173,7 @@ static int get_group_size(cJSON* j_curr_state) {
   return nstate;
 }
 
-static void load_embedded_seg_from_json(lrh_seg* dstsg, cJSON* j_states,
+static void load_isolated_seg_from_json(lrh_seg* dstsg, cJSON* j_states,
   int curr_state, int curr_time) {
   cJSON* j_states_i = cJSON_GetArrayItem(j_states, curr_state);
   int nstate = get_group_size(j_states_i);
@@ -225,7 +225,7 @@ static void load_embedded_seg_from_json(lrh_seg* dstsg, cJSON* j_states,
   }
 }
 
-static lrh_dataset* load_embedded_data_from_json(cJSON* j_states, lrh_observ* o) {
+static lrh_dataset* load_isolated_data_from_json(cJSON* j_states, lrh_observ* o) {
   int nseg = cJSON_GetArraySize(j_states);
   lrh_dataset* ret = malloc(sizeof(lrh_dataset));
   int ngroup = 0;
@@ -253,7 +253,7 @@ static lrh_dataset* load_embedded_data_from_json(cJSON* j_states, lrh_observ* o)
     lrh_observ* dstob = ret -> observset -> samples[i];
     lrh_seg* dstsg = ret -> segset -> samples[i];
     // copy the segmentation for group i
-    load_embedded_seg_from_json(dstsg, j_states, curr_state, curr_time);
+    load_isolated_seg_from_json(dstsg, j_states, curr_state, curr_time);
     // copy the observation for group i
     for(int l = 0; l < nstream; l ++)
       for(int t = 0; t < next_time - curr_time; t ++)

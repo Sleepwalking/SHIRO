@@ -44,18 +44,18 @@ static void print_usage() {
     "  -p state-level-pruning (HSMM)\n"
     "  -P state-level-pruning (HMM)\n"
     "  -d extra-duration-search-space\n"
-    "  -e (embedded alignment)\n"
+    "  -i (isolated alignment)\n"
     "  -h (print usage)\n");
   exit(1);
 }
 
 int opt_geodur = 0;
-int opt_embdalign = 0;
+int opt_embdalign = 1;
 
 static cJSON* align(lrh_model* hsmm, lrh_observ* o, cJSON* j_states) {
   FP_TYPE* outp = NULL;
-  if(opt_embdalign) {
-      lrh_dataset* d = load_embedded_data_from_json(j_states, o);
+  if(! opt_embdalign) {
+      lrh_dataset* d = load_isolated_data_from_json(j_states, o);
       int nsample = d -> observset -> nsample;
       int** realign_all = calloc(nsample, sizeof(int*));
       for(int e = 0; e < nsample; e ++) {
@@ -145,7 +145,7 @@ int main(int argc, char** argv) {
   cJSON* j_segm = NULL;
   lrh_model* hsmm = NULL;
 
-  while((c = getopt(argc, argv, "m:s:gp:P:d:eh")) != -1) {
+  while((c = getopt(argc, argv, "m:s:gp:P:d:ih")) != -1) {
     char* jsonstr = NULL;
     switch(c) {
     case 'm':
@@ -180,8 +180,8 @@ int main(int argc, char** argv) {
     case 'd':
       lrh_inference_duration_extra = atoi(optarg);
     break;
-    case 'E':
-      opt_embdalign = 1;
+    case 'i':
+      opt_embdalign = 0;
     break;
     case 'h':
       print_usage();

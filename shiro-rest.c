@@ -47,7 +47,7 @@ static void print_usage() {
     "  -P state-level-pruning (HMM)\n"
     "  -d extra-duration-search-space\n"
     "  -t termination-threshold\n"
-    "  -e (embedded training)\n"
+    "  -i (isolated training)\n"
     "  -D (DAEM training)\n"
     "  -T (enable multi-threading)\n"
     "  -h (print usage)\n");
@@ -58,13 +58,13 @@ int opt_niter = 1;
 int opt_geodur = 0;
 int opt_daem = 0;
 int opt_mthread = 0;
-int opt_embdtrain = 0;
+int opt_embdtrain = 1;
 
 FP_TYPE reestimate(lrh_model_stat* hstat, lrh_model* hsmm, lrh_observ* o,
   cJSON* j_states) {
   FP_TYPE lh = 0;
-  if(opt_embdtrain) {
-    lrh_dataset* d = load_embedded_data_from_json(j_states, o);
+  if(! opt_embdtrain) {
+    lrh_dataset* d = load_isolated_data_from_json(j_states, o);
     int nsample = d -> observset -> nsample;
     for(int e = 0; e < nsample; e ++) {
       lrh_seg* es = d -> segset -> samples[e];
@@ -104,7 +104,7 @@ int main(int argc, char** argv) {
   lrh_model* hsmm = NULL;
 
   FP_TYPE opt_threshold = 1.0;
-  while((c = getopt(argc, argv, "m:s:n:gp:P:d:t:eDTh")) != -1) {
+  while((c = getopt(argc, argv, "m:s:n:gp:P:d:t:iDTh")) != -1) {
     char* jsonstr = NULL;
     switch(c) {
     case 'm':
@@ -145,8 +145,8 @@ int main(int argc, char** argv) {
     case 't':
       opt_threshold = atof(optarg);
     break;
-    case 'E':
-      opt_embdtrain = 1;
+    case 'i':
+      opt_embdtrain = 0;
     break;
     case 'D':
       opt_daem = 1;

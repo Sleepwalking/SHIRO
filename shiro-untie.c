@@ -39,11 +39,13 @@ static void print_usage() {
     "  -m model-file\n"
     "  -s segmentation-file\n"
     "  -o output-segmentation-file\n"
+    "  -O output-summary-file\n"
     "  -h (print usage)\n");
   exit(1);
 }
 
 FILE* fp_out_segm = NULL;
+FILE* fp_out_summary = NULL;
 
 static int get_total_num_states(cJSON* j_file_list) {
   int nfile = cJSON_GetArraySize(j_file_list);
@@ -82,7 +84,7 @@ int main(int argc, char** argv) {
   cJSON* j_segm = NULL;
   lrh_model* hsmm = NULL;
 
-  while((c = getopt(argc, argv, "m:s:o:h")) != -1) {
+  while((c = getopt(argc, argv, "m:s:o:O:h")) != -1) {
     char* jsonstr = NULL;
     switch(c) {
     case 'm':
@@ -108,6 +110,13 @@ int main(int argc, char** argv) {
     case 'o':
       fp_out_segm = fopen(optarg, "w");
       if(fp_out_segm == NULL) {
+        fprintf(stderr, "Error: cannot create %s.\n", optarg);
+        return 1;
+      }
+    break;
+    case 'O':
+      fp_out_summary = fopen(optarg, "w");
+      if(fp_out_summary == NULL) {
         fprintf(stderr, "Error: cannot create %s.\n", optarg);
         return 1;
       }
@@ -146,6 +155,18 @@ int main(int argc, char** argv) {
       cJSON* j_states_i = cJSON_GetArrayItem(j_states, i);
       cJSON* j_dur = cJSON_GetObjectItem(j_states_i, "dur");
       cJSON* j_out = cJSON_GetObjectItem(j_states_i, "out");
+      
+      if(fp_out_summary != NULL) {
+        fprintf(fp_out_summary, "%d %d %d", state, f, i);
+        cJSON* j_ext = cJSON_GetObjectItem(j_states_i, "ext");
+        if(j_ext != NULL) {
+          cJSON* j_phoneme = j_ext -> child;
+          cJSON* j_stateidx = j_phoneme -> next;
+          fprintf(fp_out_summary, " %s %d",
+            j_phoneme -> valuestring, j_stateidx -> valueint);
+        }
+      }
+      
       int* outst = calloc(cdhsmm -> nstream, sizeof(int));
       for(int l = 0; l < hsmm -> nstream; l ++) {
         cJSON* j_out_l = cJSON_GetArrayItem(j_out, l);
@@ -157,6 +178,7 @@ int main(int argc, char** argv) {
       cJSON_ReplaceItemInObject(j_states_i, "dur", cJSON_CreateNumber(state));
       free(outst);
       state ++;
+      if(fp_out_summary != NULL) fputs("\n", fp_out_summary);
     }
   }
   
@@ -170,6 +192,8 @@ int main(int argc, char** argv) {
     free(jsonstr);
     fclose(fp_out_segm);
   }
+  if(fp_out_summary != NULL)
+    fclose(fp_out_summary);
   
   cJSON_Delete(j_segm);
   lrh_delete_model(hsmm);

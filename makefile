@@ -7,7 +7,8 @@ ARFLAGS = -rv
 OUT_DIR = ./build
 OBJS = $(OUT_DIR)/ciglet.o $(OUT_DIR)/cJSON.o
 LIBS = -lm -Lexternal/liblrhsmm/build -llrhsmm
-TARGETS = shiro-mkhsmm shiro-init shiro-rest shiro-align shiro-wav2raw shiro-xxcc
+TARGETS = shiro-mkhsmm shiro-init shiro-rest shiro-align shiro-untie \
+  shiro-wav2raw shiro-xxcc
 
 default: $(TARGETS)
 
@@ -22,6 +23,9 @@ shiro-rest: shiro-rest.c cli-common.h $(OBJS)
 
 shiro-align: shiro-align.c cli-common.h $(OBJS)
 	$(LINK) shiro-align.c $(OBJS) $(CFLAGS) $(LIBS) -o shiro-align
+
+shiro-untie: shiro-untie.c cli-common.h $(OBJS)
+	$(LINK) shiro-untie.c $(OBJS) $(CFLAGS) $(LIBS) -o shiro-untie
 
 shiro-wav2raw: shiro-wav2raw.c $(OBJS)
 	$(LINK) shiro-wav2raw.c $(OBJS) $(CFLAGS) $(LIBS) -o shiro-wav2raw

@@ -57,6 +57,7 @@ SHIRO consists of the following tools,
 | `shiro-init` | model initialization tool | model, segmentation | model |
 | `shiro-rest` | model re-estimation (a.k.a. training) tool | model, segmentation | model |
 | `shiro-align` | aligner (using a trained model) | model, segmentation | segmentation (updated) |
+| `shiro-untie` | a tool for untying monophone models | model, segmentation | model, segmentation |
 | `shiro-wav2raw` | utility for converting `.wav` files into float binary blobs | `.wav` file | `.raw` file |
 | `shiro-xxcc` | a simple cepstral coefficients extractor | `.raw` file | parameter file |
 | `shiro-fextr.lua` | a feature extractor wrapper | directory | parameter files |

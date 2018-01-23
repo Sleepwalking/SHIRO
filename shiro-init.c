@@ -69,7 +69,7 @@ static void duplicate_zeroth_state(lrh_model* h) {
 
 static void set_variance_floor(lrh_model* h, FP_TYPE ratio) {
   for(int l = 0; l < h -> nstream; l ++)
-    for(int i = 1; i < h -> streams[l] -> ngmm; i ++) {
+    for(int i = 0; i < h -> streams[l] -> ngmm; i ++) {
       lrh_gmm* g = h -> streams[l] -> gmms[i];
       for(int k = 0; k < g -> nmix; k ++)
         for(int j = 0; j < g -> ndim; j ++)

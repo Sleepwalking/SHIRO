@@ -91,11 +91,11 @@ for i = 1, #file_list do
       print("Error: phoneme " .. p .. " is not defined in the phone map.")
       return
     end
-    local t1 = math.floor(lab[j].t1 / hop_time)
+    local t0, t1 = lab[j].t0, lab[j].t1
     local nst = #pst.states
     for k = 1, nst do
       states[#states + 1] = {
-        time = t1,
+        time = math.ceil((t0 + (t1 - t0) * k / nst) / hop_time),
         dur = pst.states[k].dur,  -- duration state
         out = pst.states[k].out,  -- output state for each stream
         jmp = {},                 -- jumps (besides forward transition)

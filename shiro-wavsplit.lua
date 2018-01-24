@@ -31,17 +31,20 @@ json = require("dkjson")
 getopt = require("getopt")
 shiro_cli = require("cli-common")
 
-opts = getopt(arg, "ntdfNl")
+opts = getopt(arg, "ntdfNsvli")
 
 if opts.h then
   print("Usage:")
-  print("shiro-wavsplit.lua path-to-wav-file\n")
-  print("  -n num-utterances\n")
-  print("  -t hop-time\n")
-  print("  -d feature-dimension\n")
-  print("  -f feature-type\n")
-  print("  -N num-iter\n")
-  print("  -l load-existing-model\n")
+  print("shiro-wavsplit.lua path-to-wav-file")
+  print("  -n num-utterances")
+  print("  -t hop-time")
+  print("  -d feature-dimension")
+  print("  -f feature-type")
+  print("  -N num-iter")
+  print("  -s min-silence-duration")
+  print("  -v min-voicing-duration")
+  print("  -l load-existing-model")
+  print("  -i load-initial-model")
   return
 end
 
@@ -56,6 +59,8 @@ if #opts._ < 1 then
 end
 
 local num_utt = tonumber(opts.n)
+local min_sil_dur = tonumber(opts.s or "0.3")
+local min_voc_dur = tonumber(opts.v or "0.3")
 local dir, fullname, ext = fileparts(opts._[1])
 local stem = fullname:sub(1, #fullname - #ext - 1)
 local path_wav = opts._[1]
@@ -72,6 +77,9 @@ local path_hsmm_trained = dir .. stem .. ".trained.hsmm"
 
 if opts.l ~= nil then
   path_hsmm_trained = opts.l
+end
+if opts.i ~= nil then
+  path_hsmm_flat = opts.i
 end
 
 local ndim = tonumber(opts.d or "13")
@@ -96,13 +104,13 @@ fp = io.open(path_pm, "wb")
 local phonemap = {
   phone_map = {
     sil = {
-      durfloor = {0.5},
+      durfloor = {min_sil_dur},
       states = {
         {out = {0}, dur = 0}
       }
     },
     utt = {
-      durfloor = {0.5},
+      durfloor = {min_voc_dur},
       states = {
         {out = {1}, dur = 1}
       }
@@ -127,13 +135,14 @@ os.execute("lua " .. mypath .. "shiro-mkseg.lua " .. path_index ..
   " -m " .. path_pm .. " -d " .. dir .. " -e .param -n " .. (ndim * 1) ..
   " > " .. path_seg_init)
 
-if opts.l == nil then
+if opts.l == nil and opts.i == nil then
   -- Make the initial model.
   os.execute(mypath .. "shiro-mkhsmm -c " .. path_md ..
     " > " .. path_hsmm_uninit)
   os.execute(mypath .. "shiro-init -m " .. path_hsmm_uninit ..
     " -s " .. path_seg_init .. " -FT -v 1 > " .. path_hsmm_flat)
-
+end
+if opts.l == nil then
   -- Training
   os.execute(mypath .. "shiro-rest -m " .. path_hsmm_flat ..
     " -s " .. path_seg_init .. " -n " .. niter ..

@@ -26,6 +26,7 @@ package.path = package.path .. ";" ..
 
 json = require("dkjson")
 getopt = require("getopt")
+shiro_cli = require("cli-common")
 
 opts = getopt(arg, "sSt")
 
@@ -48,6 +49,7 @@ end
 local input_list = opts._[1]
 
 local phonemes = {}
+local attrs = {}
 
 local fh = io.open(input_list, "r")
 if fh == nil then
@@ -59,9 +61,19 @@ while true do
   if line == nil or line == "" then
     break
   end
-  phonemes[#phonemes + 1] = line
+  line = string.delimit(line, " ")
+  line_attr = {}
+  for i = 2, #line, 2 do
+    line_attr[line[i]] = line[i + 1]
+  end
+  phonemes[#phonemes + 1] = line[1]
+  attrs[#phonemes] = line_attr
 end
 io.close(fh)
+
+local function round3(x)
+  return math.round(x * 1000) / 1000
+end
 
 local stcount = 0
 local output = {}
@@ -75,12 +87,27 @@ for i = 1, #phonemes do
     end
     stcount = stcount + 1
   end
-  output.phone_map[phonemes[i]] = {states = states}
+  local dst = {states = states}
   if default_topology ~= nil then
-    output.phone_map[phonemes[i]].topology = default_topology
+    dst.topology = default_topology
   end
   if default_weak_skips ~= nil then
-    output.phone_map[phonemes[i]].pskip = 0.02
+    dst.pskip = 0.02
   end
+  for k, v in pairs(attrs[i]) do
+    if k == "durfloor" then
+      dst.durfloor = {}
+      for j = 1, state_per_phoneme do
+        dst.durfloor[j] = round3(tonumber(v) / state_per_phoneme)
+      end
+    end
+    if k == "durceil" then
+      dst.durceil = {}
+      for j = 1, state_per_phoneme do
+        dst.durceil[j] = round3(tonumber(v) / state_per_phoneme)
+      end
+    end
+  end
+  output.phone_map[phonemes[i]] = dst
 end
 print(json.encode(output, {indent = true, keyorder = phonemes}))

@@ -94,7 +94,12 @@ static void print_usage() {
     "  -d (include dynamic feature)\n"
     "  -a (include 2nd-order dynamic feature)\n"
     "  -e (include energy, if applicable)\n"
-    "  -h (print usage)\n");
+    "  -0 (include 0-th DCT coefficient)\n"
+    "  -E energy-type \n"
+    "  -h (print usage)\n"
+    "energy-type\n"
+    "   0 RMS energy\n"
+    "   1 RMS energy (dB)\n");
   exit(1);
 }
 
@@ -107,10 +112,12 @@ FP_TYPE opt_hopsize = 256;
 FP_TYPE opt_fs = 32000;
 int   opt_d = 0;
 int   opt_a = 0;
+int   opt_0 = 0;
 int   opt_e = 0;
+int   opt_E = 0;
 
 static void main_xxcc() {
-  int nstatic = opt_order + opt_e;
+  int nstatic = opt_order + opt_e + opt_0;
   int nparam = nstatic * (1 + opt_d + opt_a);
   
   int nx = 0;
@@ -132,14 +139,18 @@ static void main_xxcc() {
 
   int nfrm = nx / opt_hopsize;
   FP_TYPE** Be = calloc(nfrm, sizeof(FP_TYPE*));
+  FP_TYPE* energy = calloc(nfrm, sizeof(FP_TYPE));
   FP_TYPE* w = blackman(opt_framesize);
   for(int i = 0; i < nfrm; i ++) {
     int center = opt_hopsize * i;
     FP_TYPE* xfrm = fetch_frame(x, nx, center, opt_framesize);
     FP_TYPE* fftbuff = calloc(nfft * 4, sizeof(FP_TYPE));
     FP_TYPE* x_re = fftbuff; FP_TYPE* x_im = fftbuff + nfft;
-    for(int j = 0; j < opt_framesize; j ++)
+    for(int j = 0; j < opt_framesize; j ++) {
       x_re[j] = xfrm[j] * w[j];
+      energy[i] += xfrm[j] * xfrm[j] * w[j];
+    }
+    energy[i] = sqrt(energy[i] / opt_framesize);
     fft(x_re, NULL, x_re, x_im, nfft, fftbuff + nfft * 2);
     for(int j = 0; j < nfft; j ++)
       x_re[j] = sqrt(x_re[j] * x_re[j] + x_im[j] * x_im[j]);
@@ -154,10 +165,16 @@ static void main_xxcc() {
   }
 
   FP_TYPE** C = calloc(nfrm, sizeof(FP_TYPE*));
-  for(int i = 0; i < nfrm; i ++)
-    C[i] = be2cc(Be[i], opt_nchannel, opt_order, opt_e);
+  for(int i = 0; i < nfrm; i ++) {
+    C[i] = be2cc(Be[i], opt_nchannel, opt_order, opt_0);
+    if(opt_e) {
+      C[i] = realloc(C[i], nstatic * sizeof(FP_TYPE));
+      C[i][nstatic - 1] = opt_E == 0 ? energy[i] : 20 * log10(energy[i]);
+    }
+  }
 
   free2d(Be, nfrm);
+  free(energy);
 
   // differentiation
 
@@ -198,7 +215,7 @@ int main(int argc, char** argv) {
   int c;
   opt_featuretype = mystrdup("mfcc");
 
-  while((c = getopt(argc, argv, "f:m:c:l:p:s:daeh")) != -1) {
+  while((c = getopt(argc, argv, "f:m:c:l:p:s:da0eE:h")) != -1) {
     switch(c) {
     case 'f':
       free(opt_featuretype);
@@ -245,8 +262,14 @@ int main(int argc, char** argv) {
     case 'a':
       opt_a = 1;
     break;
+    case '0':
+      opt_0 = 1;
+    break;
     case 'e':
       opt_e = 1;
+    break;
+    case 'E':
+      opt_E = atoi(optarg);
     break;
     case 'h':
       print_usage();

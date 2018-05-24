@@ -90,6 +90,7 @@ static void print_usage() {
     "  -c number-of-channels\n"
     "  -l frame-length\n"
     "  -p hop-size\n"
+    "  -w minimum-bandwidth\n"
     "  -s sample-rate (in kHz)\n"
     "  -d (include dynamic feature)\n"
     "  -a (include 2nd-order dynamic feature)\n"
@@ -110,6 +111,7 @@ int   opt_nchannel = 36;
 int   opt_framesize = 1024;
 FP_TYPE opt_hopsize = 256;
 FP_TYPE opt_fs = 32000;
+FP_TYPE opt_minbw = 400;
 int   opt_d = 0;
 int   opt_a = 0;
 int   opt_0 = 0;
@@ -125,9 +127,9 @@ static void main_xxcc() {
 
   int nfft = pow(2, ceil(log2(opt_framesize)));
   filterbank* fb = NULL;
-  if(! strcmp(opt_featuretype, "mfcc"))
-    fb = create_melfilterbank(nfft / 2 + 1, opt_fs / 2, opt_nchannel,
-      50, opt_fs / 2);
+  if(! strcmp(opt_featuretype, "mfcc") || ! strcmp(opt_featuretype, "mfbe"))
+    fb = cig_create_melfreq_filterbank(
+      nfft / 2 + 1, opt_fs / 2, opt_nchannel, 50, opt_fs / 2, 1.0, opt_minbw);
   else if(! strcmp(opt_featuretype, "plpcc"))
     fb = create_plpfilterbank(nfft / 2 + 1, opt_fs / 2, opt_nchannel);
   else {
@@ -166,11 +168,16 @@ static void main_xxcc() {
 
   FP_TYPE** C = calloc(nfrm, sizeof(FP_TYPE*));
   for(int i = 0; i < nfrm; i ++) {
-    C[i] = be2cc(Be[i], opt_nchannel, opt_order, opt_0);
-    if(opt_e) {
-      C[i] = realloc(C[i], nstatic * sizeof(FP_TYPE));
-      C[i][nstatic - 1] = opt_E == 0 ? energy[i] : 20 * log10(energy[i]);
+    if(! strcmp(opt_featuretype, "mfbe")) {
+      C[i] = calloc(nstatic, sizeof(FP_TYPE));
+      for(int j = 0; j < opt_order; j ++)
+        C[i][j] = Be[i][j];
+    } else {
+      C[i] = be2cc(Be[i], opt_nchannel, opt_order, opt_0);
+      if(opt_e) C[i] = realloc(C[i], nstatic * sizeof(FP_TYPE));
     }
+    if(opt_e)
+      C[i][nstatic - 1] = opt_E == 0 ? energy[i] : 20 * log10(energy[i]);
   }
 
   free2d(Be, nfrm);
@@ -215,7 +222,7 @@ int main(int argc, char** argv) {
   int c;
   opt_featuretype = mystrdup("mfcc");
 
-  while((c = getopt(argc, argv, "f:m:c:l:p:s:da0eE:h")) != -1) {
+  while((c = getopt(argc, argv, "f:m:c:l:p:w:s:da0eE:h")) != -1) {
     switch(c) {
     case 'f':
       free(opt_featuretype);
@@ -246,6 +253,13 @@ int main(int argc, char** argv) {
       opt_hopsize = atof(optarg);
       if(opt_hopsize < 1) {
         fprintf(stderr, "Error: invalid hop size.\n");
+        exit(1);
+      }
+    break;
+    case 'w':
+      opt_minbw = atof(optarg);
+      if(opt_minbw < 0) {
+        fprintf(stderr, "Error: invalid bandwidth.\n");
         exit(1);
       }
     break;

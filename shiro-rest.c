@@ -233,7 +233,12 @@ int main(int argc, char** argv) {
       checkvar(states);
       
       lrh_observ* o = load_observ_from_float(j_filename -> valuestring, hsmm);
-      total_lh += reestimate(hstat, hsmm, o, j_states);
+      FP_TYPE e = reestimate(hstat, hsmm, o, j_states);
+      if(e < -1e8) {
+        fprintf(stderr, "Inference failed on file %d (%s).\n", f,
+          j_filename -> valuestring);
+      }
+      total_lh += e;
       lrh_delete_observ(o);
     }
 

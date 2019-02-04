@@ -85,13 +85,14 @@ static void compute_dynamic_feature(FP_TYPE** fstatic, int nfrm, int size,
 static void print_usage() {
   fprintf(stderr,
     "shiro-xxcc path-to-raw-file\n"
-    "  -f feature-type (mfcc or plpcc)\n"
+    "  -f feature-type (mfcc, mfbe or plpcc)\n"
     "  -m order\n"
     "  -c number-of-channels\n"
     "  -l frame-length\n"
     "  -p hop-size\n"
     "  -w minimum-bandwidth\n"
     "  -s sample-rate (in kHz)\n"
+    "  -W warp (only for mfcc and mfbe)\n"
     "  -d (include dynamic feature)\n"
     "  -a (include 2nd-order dynamic feature)\n"
     "  -e (include energy, if applicable)\n"
@@ -112,6 +113,7 @@ int   opt_framesize = 1024;
 FP_TYPE opt_hopsize = 256;
 FP_TYPE opt_fs = 32000;
 FP_TYPE opt_minbw = 400;
+FP_TYPE opt_warp = 1.0;
 int   opt_d = 0;
 int   opt_a = 0;
 int   opt_0 = 0;
@@ -128,8 +130,8 @@ static void main_xxcc() {
   int nfft = pow(2, ceil(log2(opt_framesize)));
   filterbank* fb = NULL;
   if(! strcmp(opt_featuretype, "mfcc") || ! strcmp(opt_featuretype, "mfbe"))
-    fb = cig_create_melfreq_filterbank(
-      nfft / 2 + 1, opt_fs / 2, opt_nchannel, 50, opt_fs / 2, 1.0, opt_minbw);
+    fb = cig_create_melfreq_filterbank(nfft / 2 + 1, opt_fs / 2,
+      opt_nchannel, 50, opt_fs / 2, opt_warp, opt_minbw);
   else if(! strcmp(opt_featuretype, "plpcc"))
     fb = create_plpfilterbank(nfft / 2 + 1, opt_fs / 2, opt_nchannel);
   else {
@@ -222,7 +224,7 @@ int main(int argc, char** argv) {
   int c;
   opt_featuretype = mystrdup("mfcc");
 
-  while((c = getopt(argc, argv, "f:m:c:l:p:w:s:da0eE:h")) != -1) {
+  while((c = getopt(argc, argv, "f:m:c:l:p:w:s:W:da0eE:h")) != -1) {
     switch(c) {
     case 'f':
       free(opt_featuretype);
@@ -267,6 +269,13 @@ int main(int argc, char** argv) {
       opt_fs = atof(optarg) * 1000;
       if(opt_order <= 0) {
         fprintf(stderr, "Error: invalid sample rate.\n");
+        exit(1);
+      }
+    break;
+    case 'W':
+      opt_warp = atof(optarg);
+      if(opt_warp < 0.25 || opt_warp > 4) {
+        fprintf(stderr, "Error: invalid warpping.\n");
         exit(1);
       }
     break;

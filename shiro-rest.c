@@ -151,7 +151,7 @@ int main(int argc, char** argv) {
       lrh_inference_stprune = atoi(optarg);
     break;
     case 'P':
-      lrh_inference_stprune_full_slope = atoi(optarg);
+      lrh_inference_stprune_full_slope = atof(optarg);
     break;
     case 'd':
       lrh_inference_duration_extra = atoi(optarg);

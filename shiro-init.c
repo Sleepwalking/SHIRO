@@ -67,7 +67,7 @@ static void duplicate_zeroth_state(lrh_model* h) {
     }
 }
 
-static void set_variance_floor(lrh_model* h, FP_TYPE ratio) {
+static void set_variance_floor(lrh_model* h, FP_TYPE ratio, FP_TYPE dur) {
   for(int l = 0; l < h -> nstream; l ++)
     for(int i = 0; i < h -> streams[l] -> ngmm; i ++) {
       lrh_gmm* g = h -> streams[l] -> gmms[i];
@@ -75,6 +75,17 @@ static void set_variance_floor(lrh_model* h, FP_TYPE ratio) {
         for(int j = 0; j < g -> ndim; j ++)
           lrh_gmmvf(g, k, j) = lrh_gmmv(g, k, j) * ratio;
     }
+  
+  // Initialize duration states with global stats if they are not set yet.
+  // These states probably will not be encountered, but still possible if
+  //   initialized from an incomplete dataset.
+  for(int i = 0; i < h -> nduration; i ++) {
+    lrh_duration* dur_state = h -> durations[i];
+    if(dur_state -> mean == 0) {
+      dur_state -> mean = dur;
+      dur_state -> var = dur * dur;
+    }
+  }
 }
 
 extern char* optarg;
@@ -142,6 +153,9 @@ int main(int argc, char** argv) {
   int nfile = cJSON_GetArraySize(j_file_list);
 
   lrh_model_stat* hstat = lrh_model_stat_from_model(hsmm);
+  
+  uint64_t total_frames = 0;
+  uint64_t total_num_states = 0;
 
   for(int f = 0; f < nfile; f ++) {
     cJSON* j_file_list_f = cJSON_GetArrayItem(j_file_list, f);
@@ -155,6 +169,9 @@ int main(int argc, char** argv) {
     for(int i = 0; i < s -> nseg; i ++)
       if(s -> time[i] > o -> nt)
         s -> time[i] = o -> nt;
+    
+    total_frames += o -> nt;
+    total_num_states = s -> nseg;
 
     if(opt_flatstart)
       assign_uniform_state_duration(s, o);
@@ -171,7 +188,9 @@ int main(int argc, char** argv) {
 
   if(opt_globltied)
     duplicate_zeroth_state(hsmm);
-  set_variance_floor(hsmm, opt_variancefloor);
+  
+  FP_TYPE avg_dur = (FP_TYPE)total_frames / total_num_states;
+  set_variance_floor(hsmm, opt_variancefloor, avg_dur);
 
   cmp_ctx_t cmpobj;
   cmp_init(& cmpobj, stdout, file_reader, file_writer);

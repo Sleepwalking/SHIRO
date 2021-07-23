@@ -5,10 +5,12 @@ AR = $(CROSS)ar
 CFLAGS = -DFP_TYPE=float -Ofast -g -mtune=native -std=c99 -Wall -fPIC -lm $(CFLAGSEXT)
 ARFLAGS = -rv
 OUT_DIR = ./build
-OBJS = $(OUT_DIR)/ciglet.o $(OUT_DIR)/cJSON.o
+OBJS = $(OUT_DIR)/ciglet.o $(OUT_DIR)/cJSON.o $(OUT_DIR)/liblrhsmm.a
 LIBS = -lm -Lexternal/liblrhsmm/build -llrhsmm
 TARGETS = shiro-mkhsmm shiro-init shiro-rest shiro-align shiro-untie \
   shiro-wav2raw shiro-xxcc
+
+.PHONY: default clean distclean
 
 default: $(TARGETS)
 
@@ -34,15 +36,26 @@ shiro-xxcc: shiro-xxcc.c $(OBJS)
 	$(LINK) shiro-xxcc.c $(OBJS) $(CFLAGS) $(LIBS) -o shiro-xxcc
 
 $(OUT_DIR)/ciglet.o:
-	$(CC) $(CFLAGS) -o $(OUT_DIR)/ciglet.o -c external/ciglet/ciglet.c
+	$(MAKE) -C external/ciglet single-file
+	@mkdir -p $(OUT_DIR)
+	$(CC) $(CFLAGS) -o $(OUT_DIR)/ciglet.o -c external/ciglet/single-file/ciglet.c
 
 $(OUT_DIR)/cJSON.o:
+	@mkdir -p $(OUT_DIR)
 	$(CC) $(CFLAGS) -o $(OUT_DIR)/cJSON.o -c external/cJSON/cJSON.c
 
+$(OUT_DIR)/liblrhsmm.a:
+	@mkdir -p $(OUT_DIR)
+	$(MAKE) -C external/liblrhsmm OUT_DIR=$(realpath $(OUT_DIR))
+
 $(OUT_DIR)/%.o : %.c
+	@mkdir -p $(OUT_DIR)
 	$(CC) $(CFLAGS) -o $(OUT_DIR)/$*.o -c $*.c
 
 clean:
 	@echo 'Removing all temporary binaries...'
 	@rm -f $(OUT_DIR)/*.o $(TARGETS)
 	@echo Done.
+
+distclean:
+	@rm -rf $(OUT_DIR) $(TARGETS)

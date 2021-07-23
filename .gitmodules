@@ -1,0 +1,6 @@
+[submodule "ciglet"]
+	path = external/ciglet
+	url = ../ciglet.git
+[submodule "liblrhsmm"]
+	path = external/liblrhsmm
+	url = ../liblrhsmm.git
